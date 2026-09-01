@@ -6,6 +6,9 @@ desc: "Monitors one or more configured IPsec (swanctl) connections and force-rec
 maintainer: "me@nerexbcd.dev"
 www: "https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog"
 prefix: /usr/local
+categories: [net]
+licenselogic: single
+licenses: [BSD2CLAUSE]
 deps: {}
 scripts: {
     post-install: <<EOD
