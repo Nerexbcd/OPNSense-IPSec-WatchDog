@@ -10,6 +10,10 @@ name: Publish pkg repo
 # vmactions/freebsd-vm (https://github.com/vmactions/freebsd-vm) rather than
 # directly on the ubuntu-latest runner.
 #
+# Also (re)generates gh-pages/index.html from pkgsite/index.template.html via
+# pkgsite/gen-index.sh, so the repo root is a small install guide instead of
+# a 404 - see the README's manual-publish section for the same step run by hand.
+#
 # NOTE: this workflow has not been run/verified yet - watch the Actions tab
 # on the first real release and check vmactions/freebsd-vm's own README for
 # current input names if the build step fails.
@@ -39,6 +43,14 @@ jobs:
             mkdir -p pkgrepo
             cp output/os-ipsec-watchdog-*.pkg pkgrepo/
             pkg repo pkgrepo
+
+      - name: Generate index.html
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -e
+          VERSION="${RELEASE_TAG#v}"
+          sh pkgsite/gen-index.sh pkgrepo pkgsite/index.template.html "$VERSION"
 
       - name: Publish catalog to gh-pages
         run: |

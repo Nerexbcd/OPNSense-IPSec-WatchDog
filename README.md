@@ -86,15 +86,18 @@ Settings > Pages > Source > deploy from the `gh-pages` branch. That's the
 only step that has to happen in GitHub's web UI — everything else is `pkg`
 on the box.
 
-**On every OPNsense box you want it on**, point `pkg` at it:
+**On every OPNsense box you want it on**, point `pkg` at it. OPNsense's
+default root shell is `csh`, which doesn't understand bash-style heredocs
+(`<< 'EOF' ... EOF`) — it'll just hang waiting for input if you paste one, so
+this uses `printf`, which works the same in any shell:
 
 ```sh
-cat > /usr/local/etc/pkg/repos/ipsecwatchdog.conf << 'EOF'
-ipsecwatchdog: {
-  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/",
-  enabled: yes
-}
-EOF
+printf '%s\n' \
+  'ipsecwatchdog: {' \
+  '  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/",' \
+  '  enabled: yes' \
+  '}' \
+  > /usr/local/etc/pkg/repos/ipsecwatchdog.conf
 pkg update
 pkg install os-ipsec-watchdog
 ```
@@ -127,6 +130,7 @@ sh build.sh                                        # after bumping version: in m
 mkdir -p /tmp/pkgrepo
 cp output/os-ipsec-watchdog-*.pkg /tmp/pkgrepo/
 pkg repo /tmp/pkgrepo                               # regenerates the catalog files
+sh pkgsite/gen-index.sh /tmp/pkgrepo pkgsite/index.template.html 1.3   # -> /tmp/pkgrepo/index.html
 
 cd /tmp/pkgrepo
 git init && git add -A && git commit -m "pkg repo catalog"
