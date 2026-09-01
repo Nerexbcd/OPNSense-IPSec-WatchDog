@@ -44,22 +44,21 @@ They're two independent things:
 - **A** is just "get this specific `.pkg` file onto a box and `pkg add` it" —
   always available, on any box, at any time, whether or not that box has
   anything else configured.
-- **B** is "set up a small repo once so `pkg install`/`pkg upgrade` work
-  going forward" — a one-time addition, not a replacement for A.
+- **B** is "point `pkg` at this GitHub repo so `pkg install`/`pkg upgrade`
+  work going forward" — a one-time config file per box, not a replacement
+  for A.
 
-So "having both available" is really just: do B's *build machine* steps once
-to get the repo hosted, then **per box**, pick whichever of A or B suits that
-box — and nothing stops you doing A on a box today and adding B's repo config
-to that same box later, or vice versa. A box with the repo configured can
-still `pkg add` a one-off `.pkg` file any time (handy for testing an
-unreleased build before it goes in the repo); installing that way doesn't
-remove or conflict with the repo config, and once you *do* publish that
-version to the repo, `pkg upgrade` on that box works normally from then on
-regardless of how it was first installed.
+Having both available is automatic: nothing stops you doing A on a box today
+and adding B's repo config to that same box later, or vice versa. A box with
+the repo configured can still `pkg add` a one-off `.pkg` file any time
+(handy for testing an unreleased build before it's published); installing
+that way doesn't remove or conflict with the repo config, and once that
+version *is* published, `pkg upgrade` on that box works normally regardless
+of how it was first installed.
 
-### Method A — direct install (quickest, no repo needed)
+### Method A — direct install (quickest, no repo config needed)
 
-Good for a single box, or trying it out before committing to hosting a repo.
+Good for a single box, or trying it out before setting up the repo config.
 
 1. Get the `.pkg` file onto the box, either:
    - build it there: `git clone` (or `scp`) this repo onto the box, then
@@ -75,46 +74,24 @@ Good for a single box, or trying it out before committing to hosting a repo.
 To upgrade later with this method: build the newer version's `.pkg` and run
 `pkg add` again (or `pkg delete os-ipsec-watchdog` first, then `pkg add`).
 
-### Method B — your own pkg repo (repeatable, `pkg upgrade` works)
+### Method B — install/upgrade straight from this GitHub repo
 
-Good for multiple boxes or repeat deployments — install/upgrade becomes a
-normal `pkg install`/`pkg upgrade`, no file copying.
+This repo's own `gh-pages` branch *is* the pkg repo — there's no separate
+hosting to set up. `main` holds the source, `gh-pages` holds the built
+catalog (`.pkg` + `packagesite.pkg`/`meta.conf`), same repo, same GitHub
+account.
 
-**On a build machine** (can be the same OPNsense box, or any FreeBSD host
-with `pkg`):
+**One-time, only if GitHub Pages isn't already enabled for this repo:**
+Settings > Pages > Source > deploy from the `gh-pages` branch. That's the
+only step that has to happen in GitHub's web UI — everything else is `pkg`
+on the box.
 
-```sh
-git clone https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git
-cd OPNSense-IPSec-WatchDog
-sh build.sh                              # -> output/os-ipsec-watchdog-1.2.pkg
-
-mkdir -p /root/pkgrepo
-cp output/os-ipsec-watchdog-1.2.pkg /root/pkgrepo/
-pkg repo /root/pkgrepo                   # generates the repo catalog files
-```
-
-Publish `/root/pkgrepo`'s contents somewhere served over plain HTTP(S) — a
-`gh-pages` branch/GitHub Pages is the easiest option:
-
-```sh
-cd /root/pkgrepo
-git init
-git add .
-git commit -m "pkg repo catalog"
-git branch -M gh-pages
-git remote add origin https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git
-git push -u origin gh-pages
-```
-
-Then enable GitHub Pages for the `gh-pages` branch in the repo's Settings,
-giving you a URL like `https://Nerexbcd.github.io/OPNSense-IPSec-WatchDog/`.
-
-**On every OPNsense box you want it on**, point `pkg` at that repo:
+**On every OPNsense box you want it on**, point `pkg` at it:
 
 ```sh
 cat > /usr/local/etc/pkg/repos/ipsecwatchdog.conf << 'EOF'
 ipsecwatchdog: {
-  url: "https://Nerexbcd.github.io/OPNSense-IPSec-WatchDog/",
+  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/",
   enabled: yes
 }
 EOF
@@ -124,14 +101,27 @@ pkg install os-ipsec-watchdog
 
 Continue at [Post-install configuration](#post-install-configuration) below.
 
-To upgrade later with this method: bump `version:` in `manifest/+MANIFEST`,
-re-run `build.sh`, copy the new `.pkg` into `/root/pkgrepo`, re-run
-`pkg repo /root/pkgrepo`, re-push the `gh-pages` branch. Every box then just
-needs `pkg update && pkg upgrade os-ipsec-watchdog`.
+**To publish a new version later** (from a clone of this repo, or the
+OPNsense box itself):
 
-Optionally sign the repo with a key (`pkg repo /root/pkgrepo <keyfile>`) for
-integrity checking — recommended since this pulls over plain GitHub Pages/raw
-URLs rather than a signed official repo.
+```sh
+sh build.sh                                        # after bumping version: in manifest/+MANIFEST
+mkdir -p /tmp/pkgrepo
+cp output/os-ipsec-watchdog-*.pkg /tmp/pkgrepo/
+pkg repo /tmp/pkgrepo                               # regenerates the catalog files
+
+cd /tmp/pkgrepo
+git init && git add -A && git commit -m "pkg repo catalog"
+git push https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git master:gh-pages --force
+```
+
+`--force` is expected here — `gh-pages` only ever holds the latest catalog,
+it has no history worth keeping. Every box with the repo config above then
+just needs `pkg update && pkg upgrade os-ipsec-watchdog`.
+
+Optionally sign the repo with a key (`pkg repo /tmp/pkgrepo <keyfile>`) for
+integrity checking — recommended since this pulls over plain GitHub Pages
+rather than a signed official repo.
 
 ## Post-install configuration
 
