@@ -13,8 +13,10 @@ now" button and a live "Show tunnel status" table (one row per child SA) let
 you sanity-check things from the page itself.
 
 The actual check/reconnect logic runs as a single `configd` action that loops
-over every enabled row, so it schedules as one parameter-less cron job no
-matter how many tunnels you're watching.
+over every enabled row, so one parameter-less cron job covers every tunnel
+you're watching no matter how many there are — and that cron job is created
+for you automatically the first time you install the package, running every
+minute out of the box.
 
 Built with real MVC files pulled from `opnsense/plugins` and `opnsense/core`
 as reference, then installed and exercised end-to-end (menu, grid, add/edit/
@@ -36,21 +38,37 @@ at the bottom if that's ever a goal.
 
 ## Installation
 
-Pick **one** of the two methods below. Both end with the same result — the
-choice is really "how do I want to redo this on my *next* box".
+Two methods below, **A** and **B** — but they aren't an either/or choice.
+They're two independent things:
 
-### Method A — direct install (quickest, manual every time)
+- **A** is just "get this specific `.pkg` file onto a box and `pkg add` it" —
+  always available, on any box, at any time, whether or not that box has
+  anything else configured.
+- **B** is "set up a small repo once so `pkg install`/`pkg upgrade` work
+  going forward" — a one-time addition, not a replacement for A.
+
+So "having both available" is really just: do B's *build machine* steps once
+to get the repo hosted, then **per box**, pick whichever of A or B suits that
+box — and nothing stops you doing A on a box today and adding B's repo config
+to that same box later, or vice versa. A box with the repo configured can
+still `pkg add` a one-off `.pkg` file any time (handy for testing an
+unreleased build before it goes in the repo); installing that way doesn't
+remove or conflict with the repo config, and once you *do* publish that
+version to the repo, `pkg upgrade` on that box works normally from then on
+regardless of how it was first installed.
+
+### Method A — direct install (quickest, no repo needed)
 
 Good for a single box, or trying it out before committing to hosting a repo.
 
 1. Get the `.pkg` file onto the box, either:
    - build it there: `git clone` (or `scp`) this repo onto the box, then
      `cd OPNSense-IPSec-WatchDog && sh build.sh` — produces
-     `output/os-ipsec-watchdog-1.1.pkg`; or
+     `output/os-ipsec-watchdog-1.2.pkg`; or
    - build it elsewhere and `scp` just the `.pkg` file over.
 2. Install it:
    ```sh
-   pkg add os-ipsec-watchdog-1.1.pkg
+   pkg add os-ipsec-watchdog-1.2.pkg
    ```
 3. Continue at [Post-install configuration](#post-install-configuration) below.
 
@@ -68,10 +86,10 @@ with `pkg`):
 ```sh
 git clone https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git
 cd OPNSense-IPSec-WatchDog
-sh build.sh                              # -> output/os-ipsec-watchdog-1.1.pkg
+sh build.sh                              # -> output/os-ipsec-watchdog-1.2.pkg
 
 mkdir -p /root/pkgrepo
-cp output/os-ipsec-watchdog-1.1.pkg /root/pkgrepo/
+cp output/os-ipsec-watchdog-1.2.pkg /root/pkgrepo/
 pkg repo /root/pkgrepo                   # generates the repo catalog files
 ```
 
@@ -133,14 +151,21 @@ Neither install method does this part for you — it's config, not packaging.
 3. **Sanity check before relying on cron.** Click **Run watchdog now** and
    **Show tunnel status** on the page to confirm it sees your tunnel(s)
    correctly.
-4. **Add the cron job — this step is required, it is not automatic.**
-   Installing the package only registers "IPsec Tunnel Watchdog" as an
-   available Command; nothing runs on a schedule until you add it yourself:
-   **System > Settings > Cron > +**
-   - Command: **IPsec Tunnel Watchdog**
-   - Minute: `*/1`, rest: `*`
-   - Parameters: leave blank (settings come from the GUI page above, not cron
-     args — one cron job covers every tunnel you've added)
+4. **Nothing to do for cron — it's already scheduled.** Installing the
+   package automatically adds a cron job (**System > Settings > Cron**,
+   labeled "IPsec Tunnel Watchdog (auto-added, runs every minute)") that
+   runs the check/reconnect pass for every tunnel row you've added above,
+   every minute. This only happens once, the first time the package is ever
+   installed — reinstalling or upgrading later won't create a second one.
+
+   **To change how often it runs:** open that job under System > Settings >
+   Cron and edit the **Minute** field (e.g. `*/5` for every 5 minutes) —
+   Hour/Day/Month/Weekday work the same way if you want something less
+   frequent than "every minute". Whatever you set here survives future
+   upgrades of this plugin; it's never reset back to the default. The
+   **Command** and **Parameters** fields are locked (OPNsense protects
+   auto-registered jobs from being repointed at a different action) — that's
+   expected, only the schedule/enabled/description are yours to change.
 
 Check logs any time with:
 
@@ -148,8 +173,12 @@ Check logs any time with:
 grep ipsec-watchdog /var/log/system/latest.log
 ```
 
-To remove entirely: `pkg delete os-ipsec-watchdog` (also removes the cron
-Command option — delete the actual cron job entry first if you added one).
+To remove entirely: `pkg delete os-ipsec-watchdog`. This does **not** remove
+the cron job it created (OPNsense won't let a plugin silently delete a
+schedule you may have customized) — if you're uninstalling for good, delete
+that cron entry yourself from System > Settings > Cron afterwards; once the
+package is gone, OPNsense will allow deleting it (it only protects jobs
+belonging to a still-installed plugin).
 
 ## What's in here
 
@@ -158,6 +187,7 @@ root/usr/local/opnsense/mvc/app/models/OPNsense/IPsecWatchdog/     # model, menu
 root/usr/local/opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/ # index + API controllers, form def
 root/usr/local/opnsense/mvc/app/views/OPNsense/IPsecWatchdog/       # settings page template
 root/usr/local/opnsense/scripts/OPNsense/IPsecWatchdog/watchdog.php # the actual check/reconnect logic
+root/usr/local/opnsense/scripts/OPNsense/IPsecWatchdog/manage_cron.php # one-time cron job registration on install
 root/usr/local/opnsense/service/conf/actions.d/                    # configd action registration
 manifest/+MANIFEST   # pkg manifest
 plist                # files the package owns

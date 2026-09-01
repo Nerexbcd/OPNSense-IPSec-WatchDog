@@ -1,5 +1,5 @@
 name: os-ipsec-watchdog
-version: "1.1"
+version: "1.2"
 origin: "net/os-ipsec-watchdog"
 comment: "IPsec tunnel watchdog with GUI"
 desc: "Monitors one or more configured IPsec (swanctl) connections and force-reconnects any that stay down beyond their configured threshold. Includes a VPN > IPsec Watchdog settings page with a live tunnel status table."
@@ -14,12 +14,15 @@ scripts: {
     post-install: <<EOD
 #!/bin/sh
 chmod +x /usr/local/opnsense/scripts/OPNsense/IPsecWatchdog/watchdog.php
+chmod +x /usr/local/opnsense/scripts/OPNsense/IPsecWatchdog/manage_cron.php
 rm -f /var/lib/php/tmp/opnsense_menu_cache.xml
 service configd restart >/dev/null 2>&1 || /usr/local/etc/rc.d/configd restart >/dev/null 2>&1
+/usr/local/opnsense/scripts/OPNsense/IPsecWatchdog/manage_cron.php >/dev/null 2>&1
+/usr/local/sbin/configctl cron restart >/dev/null 2>&1
 /usr/local/sbin/configctl webgui restart >/dev/null 2>&1 || service lighttpd restart >/dev/null 2>&1 || /usr/local/etc/rc.d/lighttpd restart >/dev/null 2>&1
 EOD
     pre-deinstall: <<EOD
 #!/bin/sh
-logger -t ipsec-watchdog "Uninstalling os-ipsec-watchdog"
+logger -t ipsec-watchdog "Uninstalling os-ipsec-watchdog (note: its auto-added cron job, if any, is left in place - see README to remove it by hand)"
 EOD
 }

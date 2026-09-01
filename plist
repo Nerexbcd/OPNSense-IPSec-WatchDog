@@ -8,4 +8,5 @@ opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/Api/ServiceController.php
 opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/forms/tunnel.xml
 opnsense/mvc/app/views/OPNsense/IPsecWatchdog/index.volt
 opnsense/scripts/OPNsense/IPsecWatchdog/watchdog.php
+opnsense/scripts/OPNsense/IPsecWatchdog/manage_cron.php
 opnsense/service/conf/actions.d/actions_ipsecwatchdog.conf

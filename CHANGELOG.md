@@ -3,6 +3,19 @@
 All notable changes to this plugin are documented here. Versions match the
 `version:` field in `manifest/+MANIFEST`.
 
+## 1.2
+
+- **Cron job is now created automatically on first install** (System >
+  Settings > Cron, every minute) — no more manual "add the cron job"
+  step. Runs once ever, on the very first install: reinstalling or
+  upgrading never creates a duplicate, and a schedule you've since
+  customized in the GUI is never reset back to the default. Uninstalling
+  the package intentionally leaves the job in place (OPNsense also blocks
+  deleting it while the package is still installed) - remove it by hand
+  from System > Settings > Cron if you're uninstalling for good.
+- Added `categories`/`licenselogic`/`licenses` fields to
+  `manifest/+MANIFEST`.
+
 ## 1.1
 
 - **Multi-tunnel grid UI.** Replaced the single connection/child settings
