@@ -4,7 +4,7 @@ origin: "net/os-ipsec-watchdog"
 comment: "IPsec tunnel watchdog with GUI"
 desc: "Monitors one or more configured IPsec (swanctl) connections and force-reconnects any that stay down beyond their configured threshold. Includes a VPN > IPsec Watchdog settings page with a live tunnel status table."
 maintainer: "me@nerexbcd.dev"
-www: "https://github.com/Nerexbcd/opnsense-ipsec-watchdog"
+www: "https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog"
 prefix: /usr/local
 deps: {}
 scripts: {

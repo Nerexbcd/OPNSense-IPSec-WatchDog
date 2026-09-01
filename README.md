@@ -41,7 +41,7 @@ has its own IPsec setup, and this hasn't been through a broader review.
 Copy this whole folder onto the OPNsense box (scp, git clone, whatever), then:
 
 ```sh
-cd opnsense-ipsec-watchdog
+cd OPNSense-IPSec-WatchDog
 sh build.sh
 ```
 
@@ -98,7 +98,7 @@ repo, instead of manually copying the `.pkg` file around.
 git init
 git add .
 git commit -m "Initial IPsec watchdog plugin"
-git remote add origin https://github.com/Nerexbcd/opnsense-ipsec-watchdog.git
+git remote add origin https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git
 git push -u origin main
 ```
 
@@ -126,19 +126,19 @@ git init
 git add .
 git commit -m "pkg repo catalog"
 git branch -M gh-pages
-git remote add origin https://github.com/Nerexbcd/opnsense-ipsec-watchdog.git
+git remote add origin https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git
 git push -u origin gh-pages
 ```
 
 Then enable GitHub Pages for that branch in the repo's Settings, giving you a
-URL like `https://Nerexbcd.github.io/opnsense-ipsec-watchdog/`.
+URL like `https://Nerexbcd.github.io/OPNSense-IPSec-WatchDog/`.
 
 **d) Point OPNsense at it** — create a repo config on the firewall:
 
 ```sh
 cat > /usr/local/etc/pkg/repos/ipsecwatchdog.conf << 'EOF'
 ipsecwatchdog: {
-  url: "https://Nerexbcd.github.io/opnsense-ipsec-watchdog/",
+  url: "https://Nerexbcd.github.io/OPNSense-IPSec-WatchDog/",
   enabled: yes
 }
 EOF
