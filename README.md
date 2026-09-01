@@ -1,4 +1,4 @@
-# os-ipsec-watchdog
+# OPNsense IPsec WatchDog
 
 **Watch one or more IPsec tunnels on OPNsense and automatically force a
 reconnect on any that stay down too long.**
@@ -41,7 +41,7 @@ has its own IPsec setup, and this hasn't been through a broader review.
 Copy this whole folder onto the OPNsense box (scp, git clone, whatever), then:
 
 ```sh
-cd os-ipsec-watchdog
+cd opnsense-ipsec-watchdog
 sh build.sh
 ```
 
@@ -98,7 +98,7 @@ repo, instead of manually copying the `.pkg` file around.
 git init
 git add .
 git commit -m "Initial IPsec watchdog plugin"
-git remote add origin https://github.com/Nerexbcd/os-ipsec-watchdog.git
+git remote add origin https://github.com/Nerexbcd/opnsense-ipsec-watchdog.git
 git push -u origin main
 ```
 
@@ -126,19 +126,19 @@ git init
 git add .
 git commit -m "pkg repo catalog"
 git branch -M gh-pages
-git remote add origin https://github.com/Nerexbcd/os-ipsec-watchdog.git
+git remote add origin https://github.com/Nerexbcd/opnsense-ipsec-watchdog.git
 git push -u origin gh-pages
 ```
 
 Then enable GitHub Pages for that branch in the repo's Settings, giving you a
-URL like `https://Nerexbcd.github.io/os-ipsec-watchdog/`.
+URL like `https://Nerexbcd.github.io/opnsense-ipsec-watchdog/`.
 
 **d) Point OPNsense at it** — create a repo config on the firewall:
 
 ```sh
 cat > /usr/local/etc/pkg/repos/ipsecwatchdog.conf << 'EOF'
 ipsecwatchdog: {
-  url: "https://Nerexbcd.github.io/os-ipsec-watchdog/",
+  url: "https://Nerexbcd.github.io/opnsense-ipsec-watchdog/",
   enabled: yes
 }
 EOF
