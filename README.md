@@ -101,8 +101,26 @@ pkg install os-ipsec-watchdog
 
 Continue at [Post-install configuration](#post-install-configuration) below.
 
-**To publish a new version later** (from a clone of this repo, or the
-OPNsense box itself):
+**To publish a new version, the automated way:** bump `version:` in
+`manifest/+MANIFEST`, commit, tag it, push the tag, then turn that tag into
+a GitHub Release:
+
+```sh
+git tag v1.3
+git push origin v1.3
+```
+
+Then on GitHub: **Releases > Draft a new release**, pick the tag you just
+pushed, **Publish release**. That triggers
+[`.github/workflows/publish-pkg-repo.yml`](.github/workflows/publish-pkg-repo.yml),
+which builds the `.pkg` on a real FreeBSD VM (`pkg create`/`pkg repo` have
+no Linux/macOS/Windows equivalent, so it can't run directly on GitHub's
+standard runners) and pushes the refreshed catalog to `gh-pages` for you —
+watch the **Actions** tab for progress. Drafting or editing release notes
+never triggers it; only actually clicking **Publish release** does.
+
+**To publish a new version by hand instead** (no CI, e.g. while testing
+changes to the workflow itself):
 
 ```sh
 sh build.sh                                        # after bumping version: in manifest/+MANIFEST

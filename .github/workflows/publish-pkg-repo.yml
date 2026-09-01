@@ -1,0 +1,55 @@
+name: Publish pkg repo
+
+# Builds the .pkg and regenerates the gh-pages catalog every time a GitHub
+# Release is published (Releases > Draft a new release > Publish release).
+# Publishing a *draft* does NOT trigger this - only an actual publish does,
+# so drafting/editing release notes is always safe.
+#
+# `pkg create`/`pkg repo` are FreeBSD-specific tools with no Linux/macOS/
+# Windows equivalent, so the build step runs inside a real FreeBSD VM via
+# vmactions/freebsd-vm (https://github.com/vmactions/freebsd-vm) rather than
+# directly on the ubuntu-latest runner.
+#
+# NOTE: this workflow has not been run/verified yet - watch the Actions tab
+# on the first real release and check vmactions/freebsd-vm's own README for
+# current input names if the build step fails.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build .pkg and repo catalog inside a FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          copyback: true
+          run: |
+            set -e
+            sh build.sh
+            mkdir -p pkgrepo
+            cp output/os-ipsec-watchdog-*.pkg pkgrepo/
+            pkg repo pkgrepo
+
+      - name: Publish catalog to gh-pages
+        run: |
+          set -e
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          rm -rf /tmp/gh-pages-publish
+          mkdir /tmp/gh-pages-publish
+          cp pkgrepo/* /tmp/gh-pages-publish/
+          cd /tmp/gh-pages-publish
+          git init -q
+          git add -A
+          git commit -q -m "pkg repo catalog: ${{ github.event.release.tag_name }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages
