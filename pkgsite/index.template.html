@@ -53,13 +53,16 @@
   <p class="tagline">pkg repository — not a webpage for browsing, just a place <code>pkg</code> fetches from.</p>
 
   <h2>Install</h2>
-  <p>On the OPNsense box:</p>
-  <pre><code>cat &gt; /usr/local/etc/pkg/repos/ipsecwatchdog.conf &lt;&lt; 'EOF'
-ipsecwatchdog: {
-  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/",
-  enabled: yes
-}
-EOF
+  <p>On the OPNsense box. Uses <code>printf</code> rather than a heredoc
+     since OPNsense's default root shell is <code>csh</code>, which doesn't
+     understand <code>&lt;&lt; 'EOF'</code> heredoc syntax at all — it just
+     hangs waiting for input if you paste one in:</p>
+  <pre><code>printf '%s\n' \
+  'ipsecwatchdog: {' \
+  '  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/",' \
+  '  enabled: yes' \
+  '}' \
+  &gt; /usr/local/etc/pkg/repos/ipsecwatchdog.conf
 pkg update
 pkg install os-ipsec-watchdog</code></pre>
   <p>Already installed? <code>pkg update &amp;&amp; pkg upgrade os-ipsec-watchdog</code> picks up new releases.</p>
