@@ -1,18 +1,27 @@
 name: Publish pkg repo
 
-# Builds the .pkg and regenerates the gh-pages catalog every time a GitHub
-# Release is published (Releases > Draft a new release > Publish release).
-# Publishing a *draft* does NOT trigger this - only an actual publish does,
-# so drafting/editing release notes is always safe.
+# Builds the .pkg for each supported FreeBSD base and regenerates the
+# gh-pages catalogs every time a GitHub Release is published (Releases >
+# Draft a new release > Publish release). Publishing a *draft* does NOT
+# trigger this - only an actual publish does, so drafting/editing release
+# notes is always safe.
 #
 # `pkg create`/`pkg repo` are FreeBSD-specific tools with no Linux/macOS/
 # Windows equivalent, so the build step runs inside a real FreeBSD VM via
 # vmactions/freebsd-vm (https://github.com/vmactions/freebsd-vm) rather than
-# directly on the ubuntu-latest runner.
+# directly on the ubuntu-latest runner. build.sh itself builds every ABI in
+# its ABIS list by retagging (not recompiling - this plugin has no compiled
+# code) from that one FreeBSD VM; see build.sh's own comments.
 #
-# Also (re)generates gh-pages/index.html from pkgsite/index.template.html via
-# pkgsite/gen-index.sh, so the repo root is a small install guide instead of
-# a 404 - see the README's manual-publish section for the same step run by hand.
+# gh-pages layout is two self-contained catalogs, not one repo relying on
+# pkg's own ${ABI} URL templating (see pkg.conf(5)) - that would need paths
+# with literal colons (FreeBSD:14:amd64), which git/GitHub handle fine on
+# Linux but are unusable on a Windows dev machine, so this repo standardizes
+# on plain non-colon directory names everywhere instead, manual publishes
+# included:
+#   /                     FreeBSD 15 catalog (current OPNsense), also gets
+#                         the install guide (pkgsite/index.template.html)
+#   /freebsd14-amd64/     FreeBSD 14 catalog (older OPNsense)
 #
 # NOTE: this workflow has not been run/verified yet - watch the Actions tab
 # on the first real release and check vmactions/freebsd-vm's own README for
@@ -32,7 +41,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build .pkg and repo catalog inside a FreeBSD VM
+      - name: Build .pkg + repo catalogs for every ABI inside a FreeBSD VM
+        # pkg repo (like pkg create) is a FreeBSD-specific tool too, so this
+        # stays inside the VM rather than becoming a separate ubuntu-host step
         uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
@@ -40,9 +51,12 @@ jobs:
           run: |
             set -e
             sh build.sh
-            mkdir -p pkgrepo
-            cp output/ipsec-watchdog-*.pkg pkgrepo/
-            pkg repo pkgrepo
+            rm -rf pkgrepo
+            mkdir -p pkgrepo/root pkgrepo/freebsd14-amd64
+            cp "output/FreeBSD:15:amd64"/ipsec-watchdog-*.pkg pkgrepo/root/
+            cp "output/FreeBSD:14:amd64"/ipsec-watchdog-*.pkg pkgrepo/freebsd14-amd64/
+            pkg repo pkgrepo/root
+            pkg repo pkgrepo/freebsd14-amd64
 
       - name: Generate index.html
         env:
@@ -50,18 +64,19 @@ jobs:
         run: |
           set -e
           VERSION="${RELEASE_TAG#v}"
-          sh pkgsite/gen-index.sh pkgrepo pkgsite/index.template.html "$VERSION"
+          sh pkgsite/gen-index.sh pkgrepo/root pkgrepo/freebsd14-amd64 pkgsite/index.template.html "$VERSION" pkgrepo/root/index.html
 
-      - name: Publish catalog to gh-pages
+      - name: Publish catalogs to gh-pages
         run: |
           set -e
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           rm -rf /tmp/gh-pages-publish
-          mkdir /tmp/gh-pages-publish
-          cp pkgrepo/* /tmp/gh-pages-publish/
+          mkdir -p /tmp/gh-pages-publish/freebsd14-amd64
+          cp pkgrepo/root/* /tmp/gh-pages-publish/
+          cp pkgrepo/freebsd14-amd64/* /tmp/gh-pages-publish/freebsd14-amd64/
           cd /tmp/gh-pages-publish
           git init -q
           git add -A
-          git commit -q -m "pkg repo catalog: ${{ github.event.release.tag_name }}"
+          git commit -q -m "pkg repo catalogs: ${{ github.event.release.tag_name }}"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:gh-pages

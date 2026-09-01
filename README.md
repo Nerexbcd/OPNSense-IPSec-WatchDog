@@ -89,7 +89,14 @@ on the box.
 **On every OPNsense box you want it on**, point `pkg` at it. OPNsense's
 default root shell is `csh`, which doesn't understand bash-style heredocs
 (`<< 'EOF' ... EOF`) — it'll just hang waiting for input if you paste one, so
-this uses `printf`, which works the same in any shell:
+this uses `printf`, which works the same in any shell.
+
+Two FreeBSD bases are published, since a `.pkg` is tagged for one specific
+base and OPNsense bumps it periodically (26.7 is FreeBSD 15; older releases
+like 26.1.x are FreeBSD 14). Run `pkg config abi` on the box first to check
+which one you have:
+
+**FreeBSD 15** (current OPNsense, e.g. 26.7+):
 
 ```sh
 printf '%s\n' \
@@ -101,6 +108,23 @@ printf '%s\n' \
 pkg update
 pkg install ipsec-watchdog
 ```
+
+**FreeBSD 14** (older OPNsense, e.g. 25.1–26.1.x) — same idea, different URL:
+
+```sh
+printf '%s\n' \
+  'ipsecwatchdog: {' \
+  '  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/freebsd14-amd64/",' \
+  '  enabled: yes' \
+  '}' \
+  > /usr/local/etc/pkg/repos/ipsecwatchdog.conf
+pkg update
+pkg install ipsec-watchdog
+```
+
+Picking the wrong one fails cleanly at `pkg update` (`wrong architecture:
+FreeBSD:15:amd64 instead of FreeBSD:14:amd64` or similar) rather than
+installing something broken — if you see that, switch to the other URL.
 
 Continue at [Post-install configuration](#post-install-configuration) below.
 
@@ -116,32 +140,49 @@ git push origin v1.3
 Then on GitHub: **Releases > Draft a new release**, pick the tag you just
 pushed, **Publish release**. That triggers
 [`.github/workflows/publish-pkg-repo.yml`](.github/workflows/publish-pkg-repo.yml),
-which builds the `.pkg` on a real FreeBSD VM (`pkg create`/`pkg repo` have
-no Linux/macOS/Windows equivalent, so it can't run directly on GitHub's
-standard runners) and pushes the refreshed catalog to `gh-pages` for you —
-watch the **Actions** tab for progress. Drafting or editing release notes
-never triggers it; only actually clicking **Publish release** does.
+which builds the `.pkg` for every supported FreeBSD base on a real FreeBSD VM
+(`pkg create`/`pkg repo` have no Linux/macOS/Windows equivalent, so it can't
+run directly on GitHub's standard runners) and pushes the refreshed catalogs
+to `gh-pages` for you — watch the **Actions** tab for progress. Drafting or
+editing release notes never triggers it; only actually clicking **Publish
+release** does.
 
 **To publish a new version by hand instead** (no CI, e.g. while testing
 changes to the workflow itself):
 
 ```sh
-sh build.sh                                        # after bumping version: in manifest/+MANIFEST
-mkdir -p /tmp/pkgrepo
-cp output/ipsec-watchdog-*.pkg /tmp/pkgrepo/
-pkg repo /tmp/pkgrepo                               # regenerates the catalog files
-sh pkgsite/gen-index.sh /tmp/pkgrepo pkgsite/index.template.html 1.3   # -> /tmp/pkgrepo/index.html
+sh build.sh   # after bumping version: in manifest/+MANIFEST - builds every ABI in build.sh's ABIS list
 
-cd /tmp/pkgrepo
-git init && git add -A && git commit -m "pkg repo catalog"
+# build each ABI's catalog in its own directory - pkg repo scans recursively,
+# so nesting one inside the other would mix both ABIs into the same catalog
+rm -rf /tmp/pkgrepo-root /tmp/pkgrepo-fb14
+mkdir -p /tmp/pkgrepo-root /tmp/pkgrepo-fb14
+cp "output/FreeBSD:15:amd64"/ipsec-watchdog-*.pkg /tmp/pkgrepo-root/
+cp "output/FreeBSD:14:amd64"/ipsec-watchdog-*.pkg /tmp/pkgrepo-fb14/
+pkg repo /tmp/pkgrepo-root
+pkg repo /tmp/pkgrepo-fb14
+sh pkgsite/gen-index.sh /tmp/pkgrepo-root /tmp/pkgrepo-fb14 pkgsite/index.template.html 1.3 /tmp/pkgrepo-root/index.html
+
+# now merge into the actual publish layout: fb14's catalog nests under
+# freebsd14-amd64/ only at this final step, as plain files pkg repo never
+# has to scan again
+mkdir -p /tmp/pkgrepo-root/freebsd14-amd64
+cp /tmp/pkgrepo-fb14/* /tmp/pkgrepo-root/freebsd14-amd64/
+
+cd /tmp/pkgrepo-root
+git init && git add -A && git commit -m "pkg repo catalogs"
 git push https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git master:gh-pages --force
 ```
 
-`--force` is expected here — `gh-pages` only ever holds the latest catalog,
-it has no history worth keeping. Every box with the repo config above then
+`--force` is expected here — `gh-pages` only ever holds the latest catalogs,
+it has no history worth keeping. Every box with either repo config above then
 just needs `pkg update && pkg upgrade ipsec-watchdog`.
 
-Optionally sign the repo with a key (`pkg repo /tmp/pkgrepo <keyfile>`) for
+Adding a third FreeBSD base later just means adding one more `ABI:OSVERSION`
+entry to `build.sh`'s `ABIS` list and one more `cp`/`pkg repo`/directory here
+(and in the CI workflow) — nothing else about this scheme changes.
+
+Optionally sign each repo with a key (`pkg repo /tmp/pkgrepo <keyfile>`) for
 integrity checking — recommended since this pulls over plain GitHub Pages
 rather than a signed official repo.
 

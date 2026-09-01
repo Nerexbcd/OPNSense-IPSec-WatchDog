@@ -52,7 +52,15 @@
   <h1>OPNsense IPsec WatchDog</h1>
   <p class="tagline">pkg repository — not a webpage for browsing, just a place <code>pkg</code> fetches from.</p>
 
-  <h2>Install</h2>
+  <p class="card">
+    <strong>Two FreeBSD bases are published</strong> — OPNsense's own base
+    OS moves to a new FreeBSD major version every so often, and a
+    <code>pkg</code> package is tagged for one specific base. Run
+    <code>pkg config abi</code> on your box first to see which one you have,
+    then use the matching section below.
+  </p>
+
+  <h2>FreeBSD 15 (OPNsense 26.7 and newer)</h2>
   <p>On the OPNsense box. Uses <code>printf</code> rather than a heredoc
      since OPNsense's default root shell is <code>csh</code>, which doesn't
      understand <code>&lt;&lt; 'EOF'</code> heredoc syntax at all — it just
@@ -66,10 +74,24 @@
 pkg update
 pkg install ipsec-watchdog</code></pre>
   <p>Already installed? <code>pkg update &amp;&amp; pkg upgrade ipsec-watchdog</code> picks up new releases.</p>
-
-  <h2>Or grab the package directly</h2>
+  <p>Or grab it directly:</p>
   <ul class="files">
-    __FILE_ROWS__
+    __FILE_ROWS_15__
+  </ul>
+
+  <h2>FreeBSD 14 (older OPNsense, e.g. 25.1&ndash;26.1.x)</h2>
+  <p>Same idea, different repo URL:</p>
+  <pre><code>printf '%s\n' \
+  'ipsecwatchdog: {' \
+  '  url: "https://nerexbcd.github.io/OPNSense-IPSec-WatchDog/freebsd14-amd64/",' \
+  '  enabled: yes' \
+  '}' \
+  &gt; /usr/local/etc/pkg/repos/ipsecwatchdog.conf
+pkg update
+pkg install ipsec-watchdog</code></pre>
+  <p>Or grab it directly:</p>
+  <ul class="files">
+    __FILE_ROWS_14__
   </ul>
 
   <h2>Full documentation</h2>
