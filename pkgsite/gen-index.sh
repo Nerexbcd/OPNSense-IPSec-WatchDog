@@ -19,7 +19,7 @@ fi
 # only the actual plugin package(s) are worth a human clicking - data.pkg,
 # meta.conf etc. are pkg's own internal catalog files, not anything to download
 ROWS=""
-for f in "$REPO_DIR"/os-ipsec-watchdog-*.pkg; do
+for f in "$REPO_DIR"/ipsec-watchdog-*.pkg; do
     [ -f "$f" ] || continue
     name=$(basename "$f")
     bytes=$(wc -c < "$f" | tr -d ' ')

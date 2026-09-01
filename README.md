@@ -63,16 +63,16 @@ Good for a single box, or trying it out before setting up the repo config.
 1. Get the `.pkg` file onto the box, either:
    - build it there: `git clone` (or `scp`) this repo onto the box, then
      `cd OPNSense-IPSec-WatchDog && sh build.sh` — produces
-     `output/os-ipsec-watchdog-1.2.pkg`; or
+     `output/ipsec-watchdog-1.3.pkg`; or
    - build it elsewhere and `scp` just the `.pkg` file over.
 2. Install it:
    ```sh
-   pkg add os-ipsec-watchdog-1.2.pkg
+   pkg add ipsec-watchdog-1.3.pkg
    ```
 3. Continue at [Post-install configuration](#post-install-configuration) below.
 
 To upgrade later with this method: build the newer version's `.pkg` and run
-`pkg add` again (or `pkg delete os-ipsec-watchdog` first, then `pkg add`).
+`pkg add` again (or `pkg delete ipsec-watchdog` first, then `pkg add`).
 
 ### Method B — install/upgrade straight from this GitHub repo
 
@@ -99,7 +99,7 @@ printf '%s\n' \
   '}' \
   > /usr/local/etc/pkg/repos/ipsecwatchdog.conf
 pkg update
-pkg install os-ipsec-watchdog
+pkg install ipsec-watchdog
 ```
 
 Continue at [Post-install configuration](#post-install-configuration) below.
@@ -128,7 +128,7 @@ changes to the workflow itself):
 ```sh
 sh build.sh                                        # after bumping version: in manifest/+MANIFEST
 mkdir -p /tmp/pkgrepo
-cp output/os-ipsec-watchdog-*.pkg /tmp/pkgrepo/
+cp output/ipsec-watchdog-*.pkg /tmp/pkgrepo/
 pkg repo /tmp/pkgrepo                               # regenerates the catalog files
 sh pkgsite/gen-index.sh /tmp/pkgrepo pkgsite/index.template.html 1.3   # -> /tmp/pkgrepo/index.html
 
@@ -139,7 +139,7 @@ git push https://github.com/Nerexbcd/OPNSense-IPSec-WatchDog.git master:gh-pages
 
 `--force` is expected here — `gh-pages` only ever holds the latest catalog,
 it has no history worth keeping. Every box with the repo config above then
-just needs `pkg update && pkg upgrade os-ipsec-watchdog`.
+just needs `pkg update && pkg upgrade ipsec-watchdog`.
 
 Optionally sign the repo with a key (`pkg repo /tmp/pkgrepo <keyfile>`) for
 integrity checking — recommended since this pulls over plain GitHub Pages
@@ -185,7 +185,7 @@ Check logs any time with:
 grep ipsec-watchdog /var/log/system/latest.log
 ```
 
-To remove entirely: `pkg delete os-ipsec-watchdog`. This does **not** remove
+To remove entirely: `pkg delete ipsec-watchdog`. This does **not** remove
 the cron job it created (OPNsense won't let a plugin silently delete a
 schedule you may have customized) — if you're uninstalling for good, delete
 that cron entry yourself from System > Settings > Cron afterwards; once the

@@ -41,7 +41,7 @@ jobs:
             set -e
             sh build.sh
             mkdir -p pkgrepo
-            cp output/os-ipsec-watchdog-*.pkg pkgrepo/
+            cp output/ipsec-watchdog-*.pkg pkgrepo/
             pkg repo pkgrepo
 
       - name: Generate index.html

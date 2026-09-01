@@ -1,6 +1,6 @@
 #!/bin/sh
 # Run this ON the OPNsense box (or any FreeBSD host with pkg(8)) from inside
-# this directory. Produces output/os-ipsec-watchdog-<version>.txz
+# this directory. Produces output/ipsec-watchdog-<version>.txz
 set -e
 cd "$(dirname "$0")"
 mkdir -p output
