@@ -1,0 +1,9 @@
+<acl>
+    <page-vpn-ipsecwatchdog>
+        <name>VPN: IPsec Watchdog</name>
+        <patterns>
+            <pattern>ui/ipsecwatchdog/*</pattern>
+            <pattern>api/ipsecwatchdog/*</pattern>
+        </patterns>
+    </page-vpn-ipsecwatchdog>
+</acl>

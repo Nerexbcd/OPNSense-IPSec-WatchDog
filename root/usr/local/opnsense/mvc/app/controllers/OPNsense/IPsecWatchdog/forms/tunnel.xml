@@ -1,0 +1,49 @@
+<form>
+    <field>
+        <id>tunnel.enabled</id>
+        <label>Enabled</label>
+        <type>checkbox</type>
+        <grid_view>
+            <sequence>1</sequence>
+            <width>6em</width>
+            <type>boolean</type>
+            <formatter>rowtoggle</formatter>
+        </grid_view>
+    </field>
+    <field>
+        <id>tunnel.descr</id>
+        <label>Description</label>
+        <type>text</type>
+        <help>Optional label to help identify this entry in the list.</help>
+        <grid_view>
+            <sequence>2</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>tunnel.connection</id>
+        <label>IKE connection</label>
+        <type>dropdown</type>
+        <help>One of your configured connections (VPN &gt; IPsec &gt; Connections), shown by its description.</help>
+        <grid_view>
+            <sequence>3</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>tunnel.child</id>
+        <label>Child SA</label>
+        <type>dropdown</type>
+        <help>Any configured child SA, shown by its description. Make sure it actually belongs to the connection selected above - saving will warn you if it doesn't.</help>
+        <grid_view>
+            <sequence>4</sequence>
+        </grid_view>
+    </field>
+    <field>
+        <id>tunnel.threshold</id>
+        <label>Downtime threshold (minutes)</label>
+        <type>text</type>
+        <help>How many consecutive minutes this tunnel must be down before the watchdog forces a reconnect.</help>
+        <grid_view>
+            <sequence>5</sequence>
+        </grid_view>
+    </field>
+</form>

@@ -1,0 +1,52 @@
+<model>
+    <mount>//OPNsense/IPsecWatchdog</mount>
+    <version>2.0.0</version>
+    <description>IPsec Tunnel Watchdog settings</description>
+    <items>
+        <!-- one row per watched tunnel, so more than one IPsec connection/child SA
+             can be monitored and independently reconnected -->
+        <tunnel type="ArrayField">
+            <enabled type="BooleanField">
+                <Default>1</Default>
+            </enabled>
+            <descr type="TextField">
+                <Mask>/^.{0,64}$/</Mask>
+            </descr>
+            <!-- bound directly to OPNsense's own IPsec connection/child records (VPN > IPsec >
+                 Connections), the same way IPsec's own Swanctl model links a child to its parent
+                 connection - the dropdown, its option list and display labels all come for free
+                 from this, no custom JS/API plumbing needed -->
+            <connection type="ModelRelationField">
+                <Model>
+                    <host>
+                        <source>OPNsense.IPsec.Swanctl</source>
+                        <items>Connections.Connection</items>
+                        <display>description</display>
+                    </host>
+                </Model>
+                <Required>Y</Required>
+            </connection>
+            <child type="ModelRelationField">
+                <Model>
+                    <host>
+                        <source>OPNsense.IPsec.Swanctl</source>
+                        <items>children.child</items>
+                        <!-- a child SA's own description is optional (unlike a connection's), so
+                             fall back to its traffic selectors - always set, since a child SA is
+                             meaningless without them - to avoid a blank dropdown entry -->
+                        <display>description,local_ts,remote_ts</display>
+                        <display_format>%s (%s -> %s)</display_format>
+                    </host>
+                </Model>
+                <Required>Y</Required>
+            </child>
+            <threshold type="IntegerField">
+                <Default>10</Default>
+                <Required>Y</Required>
+                <MinimumValue>1</MinimumValue>
+                <MaximumValue>1440</MaximumValue>
+                <ValidationMessage>Enter minutes between 1 and 1440.</ValidationMessage>
+            </threshold>
+        </tunnel>
+    </items>
+</model>

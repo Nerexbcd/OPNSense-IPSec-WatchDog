@@ -1,0 +1,11 @@
+opnsense/mvc/app/models/OPNsense/IPsecWatchdog/IPsecWatchdog.xml
+opnsense/mvc/app/models/OPNsense/IPsecWatchdog/IPsecWatchdog.php
+opnsense/mvc/app/models/OPNsense/IPsecWatchdog/Menu/Menu.xml
+opnsense/mvc/app/models/OPNsense/IPsecWatchdog/ACL/ACL.xml
+opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/IndexController.php
+opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/Api/TunnelController.php
+opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/Api/ServiceController.php
+opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/forms/tunnel.xml
+opnsense/mvc/app/views/OPNsense/IPsecWatchdog/index.volt
+opnsense/scripts/OPNsense/IPsecWatchdog/watchdog.php
+opnsense/service/conf/actions.d/actions_ipsecwatchdog.conf

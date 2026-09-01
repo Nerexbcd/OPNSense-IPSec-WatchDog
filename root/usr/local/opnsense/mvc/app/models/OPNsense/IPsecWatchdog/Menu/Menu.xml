@@ -1,0 +1,5 @@
+<menu>
+    <VPN>
+        <IPsecWatchdog VisibleName="IPsec Watchdog" cssClass="fa fa-heartbeat fa-fw" url="/ui/ipsecwatchdog" order="65"/>
+    </VPN>
+</menu>
