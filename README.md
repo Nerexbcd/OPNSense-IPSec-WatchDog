@@ -222,9 +222,11 @@ attempts in a row.
   `X-Watchdog-Signature: sha256=<hmac>` header (HMAC-SHA256 of the raw
   body) so whatever receives it can verify it really came from this plugin.
 
-Any individual tunnel can also set its own **Webhook URL override** (in its
-edit dialog) if you want that one tunnel alerting somewhere different from
-everything else — leave it blank to just use the URL above.
+Any individual tunnel can also, independently, override the **Webhook URL**
+and/or the **notify-after-attempts** count in its own edit dialog — e.g. a
+critical tunnel can alert after 1 attempt while everything else still waits
+for 3, whether or not it also uses a different URL. Leave either blank to
+just use the global value above for that one.
 
 It fires once per outage, not every minute forever, and only for "still
 stuck down" — there's no separate "recovered" notification, so a resolved

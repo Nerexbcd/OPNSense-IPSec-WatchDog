@@ -206,10 +206,16 @@ foreach ($mdl->tunnel->iterateItems() as $tunnel) {
     if ($threshold < 1) {
         $threshold = 10;
     }
-    // a tunnel's own webhook URL, if set, overrides the global one
+    // a tunnel's own webhook URL/attempts, if set, override the global ones independently -
+    // e.g. a tunnel can keep the global URL but still alert sooner than the rest
     $webhookUrl = trim((string)$tunnel->webhookUrl);
     if ($webhookUrl === '') {
         $webhookUrl = $webhookUrlGlobal;
+    }
+    $tunnelWebhookAttempts = trim((string)$tunnel->webhookAttempts);
+    $webhookAttemptsForTunnel = $tunnelWebhookAttempts !== '' ? (int)$tunnelWebhookAttempts : $webhookAttempts;
+    if ($webhookAttemptsForTunnel < 1) {
+        $webhookAttemptsForTunnel = $webhookAttempts;
     }
     ipsec_watchdog_check_tunnel(
         $conn,
@@ -217,7 +223,7 @@ foreach ($mdl->tunnel->iterateItems() as $tunnel) {
         $threshold,
         trim((string)$tunnel->descr),
         $webhookUrl,
-        $webhookAttempts,
+        $webhookAttemptsForTunnel,
         $webhookSecret
     );
     $checked++;

@@ -53,4 +53,11 @@
         <help>Optional. Only alerts for this tunnel; leave blank to use the global webhook URL (General settings above), if any.</help>
         <advanced>true</advanced>
     </field>
+    <field>
+        <id>tunnel.webhookAttempts</id>
+        <label>Notify-after-attempts override</label>
+        <type>text</type>
+        <help>Optional. Overrides the global "notify after this many failed attempts" just for this tunnel - useful if this one should alert sooner (or later) than the rest. Leave blank to use the global value.</help>
+        <advanced>true</advanced>
+    </field>
 </form>
