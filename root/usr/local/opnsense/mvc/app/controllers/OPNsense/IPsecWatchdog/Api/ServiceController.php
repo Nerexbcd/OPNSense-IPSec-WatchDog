@@ -5,6 +5,7 @@ namespace OPNsense\IPsecWatchdog\Api;
 use OPNsense\Base\ApiControllerBase;
 use OPNsense\Core\Backend;
 use OPNsense\IPsec\Swanctl;
+use OPNsense\IPsecWatchdog\Webhook;
 
 /**
  * Class ServiceController
@@ -13,6 +14,33 @@ use OPNsense\IPsec\Swanctl;
  */
 class ServiceController extends ApiControllerBase
 {
+    /**
+     * Send a one-off test payload to a webhook URL, so the "Test webhook" button can confirm a
+     * URL/secret actually works without waiting for a real outage. Deliberately reads url/secret
+     * straight from the POST body (whatever's currently typed in the form) rather than the saved
+     * config, so it can be tried before hitting Save - runs directly in this API request (no
+     * configd action involved), since sending an HTTP POST needs no elevated privilege.
+     * @return array
+     */
+    public function testwebhookAction()
+    {
+        $url = trim((string)$this->request->getPost('url'));
+        $secret = (string)$this->request->getPost('secret');
+        if ($url === '') {
+            return ['result' => 'failed', 'error' => 'No webhook URL provided.'];
+        }
+        $result = Webhook::send($url, $secret, [
+            'event' => 'ipsec_watchdog_test',
+            'message' => 'This is a test notification from OPNsense IPsec WatchDog.',
+            'timestamp' => gmdate('c'),
+        ]);
+        return [
+            'result' => $result['ok'] ? 'ok' : 'failed',
+            'http_code' => $result['http_code'],
+            'error' => $result['error'],
+        ];
+    }
+
     /**
      * Run one watchdog check/action cycle immediately (same code path the cron job uses).
      * @return array

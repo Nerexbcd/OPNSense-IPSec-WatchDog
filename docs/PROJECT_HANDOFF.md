@@ -144,6 +144,28 @@ about OPNsense specifically, not just "a bug was fixed":
     Fixed with a `.gitattributes` (`*.png binary`, `*.pkg binary`, etc.) plus
     re-adding the file. Worth checking for any future binary asset in this
     repo.
+11. **Testing against a real tunnel's real identifiers can have real side
+    effects, even for a "read-only" check.** While verifying the recovery
+    ("back up") notification path, a test script called
+    `ipsec_watchdog_check_tunnel()` against the actual production
+    connection/child UUIDs (reasoning: `swanctl --list-sas` is read-only, so
+    this felt safe). It turned out the "On-Prem" tunnel was, coincidentally,
+    genuinely down at that exact moment (its peer, a placeholder-looking IP,
+    wasn't responding) - so the function did what it correctly does for a
+    real down tunnel: it called `swanctl --initiate` for real. That one
+    extra attempt was harmless here (the box's own real cron was already
+    retrying this same tunnel every minute regardless, so it changed nothing
+    that wasn't already happening), but it was still an unplanned mutating
+    action against production, not something genuinely read-only. Lesson:
+    "this call is read-only" needs verifying for the *specific* inputs being
+    used, not assumed from the function's typical behavior - a fake/inert
+    connection name (like `test-nonexistent-conn` used safely elsewhere in
+    this project's testing) doesn't have this risk; a real one does. Caught
+    immediately by checking `ps`/logs/live SA state right after, confirmed
+    it was a pre-existing real outage (not caused by this session's changes),
+    and any settings temporarily changed for testing (two notification
+    toggles) were restored to the user's actual saved values before moving
+    on - see the 1.4 sections below for what was actually verified this way.
 
 ## Explicit scope decisions (respect these if continuing this project)
 
@@ -196,8 +218,8 @@ only the URL". Two design points worth knowing if you touch this code:
   across each reconnect try (only `down_since` resets per attempt, so the
   next attempt still waits a full threshold) so it can count "3 tries" as
   the feature requires; the whole file is dropped the moment the tunnel
-  comes back up, which both re-arms the next outage's alert and answers the
-  "no recovery notification" scope decision below.
+  comes back up, which re-arms the next outage's alert (and, since 1.4's
+  follow-up below, is also the trigger for the recovery notification).
 - The **general (non-array) settings node** needed its own controller
   (`Api/GeneralController.php`) — `ApiMutableModelControllerBase`'s
   `getBase()`/`setBase()` helpers are for a specific *array item* (calling
@@ -225,6 +247,58 @@ independently recomputed and matched. All test files, the temporary API
 key, and the test webhook config were cleaned up afterward — nothing from
 this testing was left on the box or committed to the repo.
 
-Scope decision: **no "recovered" notification**, only "still stuck down" —
-asked and decided explicitly rather than assumed; the live status table on
-the page already covers confirming recovery.
+Original scope decision (later revisited, see below): no "recovered"
+notification, only "still stuck down" — asked and decided explicitly rather
+than assumed at the time.
+
+### 1.4 follow-up: test button + independent down/stuck/up event toggles
+
+Two follow-up asks: a way to test a webhook without waiting for a real
+outage, and a take-back of the "no recovery notification" decision above -
+the user wanted the choice, not a fixed answer, so it became three
+independent `BooleanField`s (`general.notifyOnDown`/`notifyOnStuck`/
+`notifyOnUp`) rather than a single fixed event. `notifyOnStuck` defaults to
+`1` (matching the plugin's pre-existing only behavior before this), the
+other two default to `0` - so an upgrade from the first 1.4 cut changes
+nothing for an existing installation until the new checkboxes are touched.
+
+- **`OPNsense\IPsecWatchdog\Webhook` (`models/.../Webhook.php`)** is a new
+  shared static helper (`Webhook::send($url, $secret, $payload)`) factored
+  out of watchdog.php's own webhook-sending code, so both the scheduled
+  check and the new "Test webhook" button call the same implementation
+  instead of two copies drifting apart. It lives under `models/` (not
+  `scripts/`) specifically so it autoloads the same way for both a CLI
+  script (`watchdog.php`) and an MVC controller
+  (`Api\ServiceController::testwebhookAction`) - confirmed by loading it
+  from both contexts before wiring it in anywhere.
+- **The test button intentionally does not go through configd.** Sending an
+  HTTP POST needs no elevated privilege (unlike `swanctl`), so
+  `testwebhookAction()` calls `Webhook::send()` directly in the API request
+  and reads `url`/`secret` from the POST body - i.e. whatever's currently
+  typed in the form, not the saved config - so a URL can be tried before
+  clicking Save.
+- **Down/up notification payloads reuse the same shape** as the existing
+  "still down" one (`event` becomes `ipsec_watchdog_down`/
+  `ipsec_watchdog_up`); the down event just fires from the branch that used
+  to only start the downtime tracker (which already ran exactly once per
+  outage, so it needed no new "already sent" bookkeeping), and the up event
+  fires from the branch that already existed to clear that tracker.
+
+Verified end-to-end on the real box: `php -l` on every changed file; the
+`Webhook` class loaded and exercised from a throwaway CLI script before
+being wired into either caller; `general/get`/`general/set` driven for real
+over HTTP with all three checkboxes, confirming they persist; the test
+button's endpoint hit twice for real - once against a URL engineered to
+fail (got back `{"result":"failed","http_code":403,...}` from a real
+external endpoint) and once against a local listener rigged to answer 200
+(got back `{"result":"ok","http_code":200}`); and the down/stuck event
+logic (with all three toggles on, then with down/stuck both off) run
+against a fake, harmless connection name through the real function code,
+confirming each event fires exactly when it should and not otherwise. See
+the "testing against real identifiers" entry above for what happened (and
+was caught and fixed) when this same verification pass reached the
+recovery/"up" path against real production identifiers - that path was
+exercised structurally (no fatal, reached the intended branch) but its
+notify-on-recovery behavior specifically was not empirically confirmed
+end-to-end the way the other two events were, since the real tunnel could
+not be made to go "up" on demand for the test.

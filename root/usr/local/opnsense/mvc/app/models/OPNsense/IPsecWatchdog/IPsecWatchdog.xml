@@ -1,6 +1,6 @@
 <model>
     <mount>//OPNsense/IPsecWatchdog</mount>
-    <version>2.2.0</version>
+    <version>2.3.0</version>
     <description>IPsec Tunnel Watchdog settings</description>
     <items>
         <!-- webhook notification settings, shared by every tunnel unless a row below sets its
@@ -19,6 +19,17 @@
             <webhookSecret type="TextField">
                 <Required>N</Required>
             </webhookSecret>
+            <!-- which event(s) actually trigger the webhook above; independent switches so any
+                 combination is possible (e.g. only "still down", or all three) -->
+            <notifyOnDown type="BooleanField">
+                <Default>0</Default>
+            </notifyOnDown>
+            <notifyOnStuck type="BooleanField">
+                <Default>1</Default>
+            </notifyOnStuck>
+            <notifyOnUp type="BooleanField">
+                <Default>0</Default>
+            </notifyOnUp>
         </general>
         <!-- one row per watched tunnel, so more than one IPsec connection/child SA
              can be monitored and independently reconnected -->

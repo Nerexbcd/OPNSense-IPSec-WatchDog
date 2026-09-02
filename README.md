@@ -208,30 +208,44 @@ belonging to a still-installed plugin).
 By default the watchdog just keeps quietly retrying — nothing tells you a
 tunnel is having trouble unless you check the page yourself. If you'd rather
 be told, the **Notifications** box at the top of the IPsec Watchdog page
-sends an HTTP webhook once a tunnel is still down after several reconnect
-attempts in a row.
+sends an HTTP webhook on whichever of these events you enable:
+
+- **Notify when a tunnel goes down** — fires immediately, the first time a
+  tunnel is detected down, before any reconnect attempt.
+- **Notify when still down after failed attempts** — the original alert:
+  fires once a tunnel has failed the configured number of reconnect
+  attempts in a row. On by default; the other two are off by default.
+- **Notify when a tunnel comes back up** — fires once, when a tunnel that
+  had been tracked as down recovers, whether or not it ever reached the
+  other two alerts.
+
+Any combination is fine — enable just one, all three, or none (which turns
+notifications off entirely regardless of the URL below).
 
 - **Webhook URL**: any HTTP(S) endpoint that accepts a POST — a Slack or
   Discord incoming webhook, PagerDuty, n8n/Zapier, or your own receiver.
-  Leave blank to leave notifications off.
 - **Notify after this many failed attempts**: consecutive reconnect
-  *attempts*, not minutes (default 3) — so with the default 10-minute
-  threshold, that's one alert roughly 30 minutes into an outage. Resets
-  once the tunnel recovers, so a future outage can alert again.
+  *attempts*, not minutes (default 3) — only relevant to the "still down"
+  event above; with the default 10-minute threshold, that's one alert
+  roughly 30 minutes into an outage. Resets once the tunnel recovers, so a
+  future outage can alert again.
 - **Webhook signing secret** (optional): if set, every request carries an
   `X-Watchdog-Signature: sha256=<hmac>` header (HMAC-SHA256 of the raw
   body) so whatever receives it can verify it really came from this plugin.
+- **Test webhook** button: sends a small test payload to whatever URL is
+  currently typed in the box above — even if you haven't clicked Save yet —
+  so you can confirm it actually reaches its destination before relying on
+  it.
 
 Any individual tunnel can also, independently, override the **Webhook URL**
 and/or the **notify-after-attempts** count in its own edit dialog — e.g. a
 critical tunnel can alert after 1 attempt while everything else still waits
 for 3, whether or not it also uses a different URL. Leave either blank to
-just use the global value above for that one.
+just use the global value above for that one. The three event checkboxes
+above are global only (they apply to every tunnel the same way).
 
-It fires once per outage, not every minute forever, and only for "still
-stuck down" — there's no separate "recovered" notification, so a resolved
-outage is confirmed on the page itself (the live status table), not by a
-second webhook. Example payload:
+Every event fires once per outage, not every minute for as long as it lasts.
+Example "still down" payload:
 
 ```json
 {
@@ -244,6 +258,12 @@ second webhook. Example payload:
   "timestamp": "2026-09-02T10:26:14+00:00"
 }
 ```
+
+The "down" and "up" events use the same shape (`event` becomes
+`ipsec_watchdog_down`/`ipsec_watchdog_up`; the down event has no
+`attempts`/`threshold_minutes` yet, the up event carries how many attempts
+were made before it recovered). The test button sends
+`{"event": "ipsec_watchdog_test", "message": "...", "timestamp": "..."}`.
 
 ---
 

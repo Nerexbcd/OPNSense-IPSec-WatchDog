@@ -17,4 +17,22 @@
         <type>password</type>
         <help>If set, every webhook request includes an X-Watchdog-Signature header (hex-encoded HMAC-SHA256 of the request body, using this secret) so a receiver can verify it actually came from this plugin.</help>
     </field>
+    <field>
+        <id>general.notifyOnDown</id>
+        <label>Notify when a tunnel goes down</label>
+        <type>checkbox</type>
+        <help>Fires immediately the first time a tunnel is detected down, before any reconnect attempt is even made.</help>
+    </field>
+    <field>
+        <id>general.notifyOnStuck</id>
+        <label>Notify when still down after failed attempts</label>
+        <type>checkbox</type>
+        <help>Fires once a tunnel has failed the "notify after this many attempts" count above. This is the original/default alert.</help>
+    </field>
+    <field>
+        <id>general.notifyOnUp</id>
+        <label>Notify when a tunnel comes back up</label>
+        <type>checkbox</type>
+        <help>Fires once, when a tunnel that had been tracked as down recovers - whether or not it ever reached the other notifications above.</help>
+    </field>
 </form>

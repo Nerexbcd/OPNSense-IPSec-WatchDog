@@ -21,6 +21,32 @@
             });
         });
 
+        $("#testWebhookAct").click(function(){
+            const $btn = $(this);
+            const $result = $("#testWebhookResult").addClass("hidden");
+            // read straight out of the form fields, so this can be tried before Save is clicked
+            const url = $("#general\\.webhookUrl").val();
+            const secret = $("#general\\.webhookSecret").val();
+            if (!url) {
+                $result.removeClass("hidden text-success").addClass("text-danger")
+                    .text("{{ lang._('Enter a webhook URL above first.') }}");
+                return;
+            }
+            $btn.prop('disabled', true);
+            ajaxCall(url="/api/ipsecwatchdog/service/testwebhook", sendData={'url': url, 'secret': secret}, callback=function(data, status){
+                $btn.prop('disabled', false);
+                if (data && data.result === 'ok') {
+                    $result.removeClass("hidden text-danger").addClass("text-success")
+                        .text("{{ lang._('Test payload sent, endpoint responded with HTTP') }} " + data.http_code + ".");
+                } else {
+                    const detail = (data && (data.error || data.http_code)) ?
+                        (data.error || ("HTTP " + data.http_code)) : "{{ lang._('unknown error') }}";
+                    $result.removeClass("hidden text-success").addClass("text-danger")
+                        .text("{{ lang._('Test payload failed:') }} " + detail);
+                }
+            });
+        });
+
         $("#{{formGridTunnel['table_id']}}").UIBootgrid({
             search:'/api/ipsecwatchdog/tunnel/search/',
             get:'/api/ipsecwatchdog/tunnel/get/',
@@ -81,10 +107,13 @@
 
 <div class="content-box __mb" style="padding: 10px;">
     <strong>{{ lang._('Notifications') }}</strong>
-    <div class="text-muted" style="margin-bottom: 10px;"><small>{{ lang._('Optional: get an HTTP webhook call when a tunnel is still down after several failed reconnect attempts. Any individual tunnel below can override the URL here with its own (see its edit dialog).') }}</small></div>
+    <div class="text-muted" style="margin-bottom: 10px;"><small>{{ lang._('Optional: get an HTTP webhook call on tunnel events. Any individual tunnel below can override the URL and/or the attempts count here with its own (see its edit dialog).') }}</small></div>
     {{ partial("layout_partials/base_form",['fields':formGeneralSettings,'id':'frm_GeneralSettings'])}}
     <button class="btn btn-primary" id="saveGeneralAct" type="button">{{ lang._('Save') }}</button>
     <span id="generalSavedMsg" class="hidden text-success" style="margin-left: 10px;"><i class="fa fa-check"></i> {{ lang._('Saved') }}</span>
+    <button class="btn btn-default" id="testWebhookAct" type="button" style="margin-left: 10px;">{{ lang._('Test webhook') }}</button>
+    <div class="text-muted" style="margin-top: 5px;"><small>{{ lang._('Sends a small test payload to the URL above (whatever is currently typed in, saved or not) so you can confirm it actually reaches its destination.') }}</small></div>
+    <div id="testWebhookResult" class="hidden" style="margin-top: 5px;"></div>
 </div>
 
 <div class="content-box __mb">

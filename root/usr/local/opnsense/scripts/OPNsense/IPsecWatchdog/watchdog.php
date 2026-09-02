@@ -16,6 +16,7 @@ require_once 'util.inc';
 
 use OPNsense\Core\Config;
 use OPNsense\IPsecWatchdog\IPsecWatchdog;
+use OPNsense\IPsecWatchdog\Webhook;
 
 openlog('ipsec-watchdog', LOG_PID, LOG_USER);
 
@@ -48,63 +49,38 @@ function ipsec_watchdog_save_state($state_file, $state)
 }
 
 /**
- * POST a JSON payload to a webhook URL, optionally HMAC-signed. Best-effort: a slow or
- * unreachable endpoint must never hold up checking the rest of the tunnels, hence the short
- * timeout, and any failure is only logged, never thrown.
+ * Thin wrapper around Webhook::send() (shared with the "Test webhook" button) that also logs
+ * the outcome - never lets a slow/unreachable endpoint hold up checking the rest of the tunnels.
  */
-function ipsec_watchdog_send_webhook($url, $secret, $payload)
+function ipsec_watchdog_notify($url, $secret, $payload, $log_prefix)
 {
-    $body = json_encode($payload);
-    $headers = ['Content-Type: application/json'];
-    if (!empty($secret)) {
-        $headers[] = 'X-Watchdog-Signature: sha256=' . hash_hmac('sha256', $body, $secret);
+    $result = Webhook::send($url, $secret, $payload);
+    if ($result['ok']) {
+        ipsec_watchdog_log("$log_prefix webhook sent, HTTP {$result['http_code']}");
+    } else {
+        $detail = $result['error'] !== '' ? $result['error'] : "HTTP {$result['http_code']}";
+        ipsec_watchdog_log("$log_prefix webhook failed: $detail");
     }
-
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $body,
-            CURLOPT_HTTPHEADER => $headers,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 5,
-        ]);
-        $resp = curl_exec($ch);
-        $err = curl_error($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($resp === false) {
-            ipsec_watchdog_log("Webhook POST to $url failed: $err");
-            return;
-        }
-        ipsec_watchdog_log("Webhook POST to $url returned HTTP $code");
-        return;
-    }
-
-    // no curl extension available - fall back to a plain HTTP stream context
-    $ctx = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => implode("\r\n", $headers),
-            'content' => $body,
-            'timeout' => 5,
-            'ignore_errors' => true,
-        ],
-    ]);
-    $resp = @file_get_contents($url, false, $ctx);
-    $status_line = isset($http_response_header[0]) ? $http_response_header[0] : '(no response)';
-    ipsec_watchdog_log("Webhook POST to $url (no curl extension) response: $status_line" . ($resp === false ? ' - request failed' : ''));
 }
 
 /**
  * Check and, if needed, reconnect a single tunnel. State (how long it's been down, how many
- * reconnect attempts made, whether a webhook already fired for this outage) is tracked per
- * connection+child pair, since two rows may share the same connection with different children
- * (or, less usefully, vice versa).
+ * reconnect attempts made, whether the "still down" webhook already fired for this outage) is
+ * tracked per connection+child pair, since two rows may share the same connection with different
+ * children (or, less usefully, vice versa).
  */
-function ipsec_watchdog_check_tunnel($conn, $child, $threshold, $descr, $webhookUrl, $webhookAttempts, $webhookSecret)
-{
+function ipsec_watchdog_check_tunnel(
+    $conn,
+    $child,
+    $threshold,
+    $descr,
+    $webhookUrl,
+    $webhookAttempts,
+    $webhookSecret,
+    $notifyOnDown,
+    $notifyOnStuck,
+    $notifyOnUp
+) {
     $state_key = preg_replace('/[^A-Za-z0-9_\-.]/', '_', "{$conn}_{$child}");
     $state_file = "/tmp/ipsec_watchdog_{$state_key}_state.json";
 
@@ -126,8 +102,21 @@ function ipsec_watchdog_check_tunnel($conn, $child, $threshold, $descr, $webhook
 
     if ($up) {
         if (file_exists($state_file)) {
+            // only a tunnel that was actually being tracked as down counts as a "recovery" -
+            // a tunnel that's simply healthy every single check never hits this branch at all
+            $state = ipsec_watchdog_load_state($state_file);
             @unlink($state_file);
             ipsec_watchdog_log("Tunnel $conn/$child is back up, cleared downtime tracker");
+            if ($notifyOnUp && !empty($webhookUrl)) {
+                ipsec_watchdog_notify($webhookUrl, $webhookSecret, [
+                    'event' => 'ipsec_watchdog_up',
+                    'connection' => $conn,
+                    'child' => $child,
+                    'description' => $descr,
+                    'attempts' => $state['attempts'],
+                    'timestamp' => gmdate('c'),
+                ], "Tunnel $conn/$child recovery");
+            }
         }
         return;
     }
@@ -138,6 +127,17 @@ function ipsec_watchdog_check_tunnel($conn, $child, $threshold, $descr, $webhook
     if (!file_exists($state_file)) {
         ipsec_watchdog_save_state($state_file, $state);
         ipsec_watchdog_log("Tunnel $conn/$child detected down, starting downtime tracker");
+        // fires once per outage, same as the other two events: this branch (state file didn't
+        // exist yet) only runs on the very first check that finds the tunnel down
+        if ($notifyOnDown && !empty($webhookUrl)) {
+            ipsec_watchdog_notify($webhookUrl, $webhookSecret, [
+                'event' => 'ipsec_watchdog_down',
+                'connection' => $conn,
+                'child' => $child,
+                'description' => $descr,
+                'timestamp' => gmdate('c'),
+            ], "Tunnel $conn/$child down-detected");
+        }
         return;
     }
 
@@ -160,11 +160,8 @@ function ipsec_watchdog_check_tunnel($conn, $child, $threshold, $descr, $webhook
         $state['attempts']++;
         $state['down_since'] = $now;
 
-        if (!$state['notified'] && !empty($webhookUrl) && $state['attempts'] >= $webhookAttempts) {
-            ipsec_watchdog_log(
-                "Tunnel $conn/$child still down after {$state['attempts']} attempts, sending webhook"
-            );
-            ipsec_watchdog_send_webhook($webhookUrl, $webhookSecret, [
+        if ($notifyOnStuck && !$state['notified'] && !empty($webhookUrl) && $state['attempts'] >= $webhookAttempts) {
+            ipsec_watchdog_notify($webhookUrl, $webhookSecret, [
                 'event' => 'ipsec_watchdog_still_down',
                 'connection' => $conn,
                 'child' => $child,
@@ -172,7 +169,7 @@ function ipsec_watchdog_check_tunnel($conn, $child, $threshold, $descr, $webhook
                 'attempts' => $state['attempts'],
                 'threshold_minutes' => $threshold,
                 'timestamp' => gmdate('c'),
-            ]);
+            ], "Tunnel $conn/$child still-down (attempt {$state['attempts']})");
             $state['notified'] = true;
         }
 
@@ -188,6 +185,9 @@ $webhookAttempts = (int)(string)$mdl->general->webhookAttempts;
 if ($webhookAttempts < 1) {
     $webhookAttempts = 3;
 }
+$notifyOnDown = (string)$mdl->general->notifyOnDown === '1';
+$notifyOnStuck = (string)$mdl->general->notifyOnStuck === '1';
+$notifyOnUp = (string)$mdl->general->notifyOnUp === '1';
 
 $checked = 0;
 foreach ($mdl->tunnel->iterateItems() as $tunnel) {
@@ -224,7 +224,10 @@ foreach ($mdl->tunnel->iterateItems() as $tunnel) {
         trim((string)$tunnel->descr),
         $webhookUrl,
         $webhookAttemptsForTunnel,
-        $webhookSecret
+        $webhookSecret,
+        $notifyOnDown,
+        $notifyOnStuck,
+        $notifyOnUp
     );
     $checked++;
 }

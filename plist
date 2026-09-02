@@ -1,5 +1,6 @@
 opnsense/mvc/app/models/OPNsense/IPsecWatchdog/IPsecWatchdog.xml
 opnsense/mvc/app/models/OPNsense/IPsecWatchdog/IPsecWatchdog.php
+opnsense/mvc/app/models/OPNsense/IPsecWatchdog/Webhook.php
 opnsense/mvc/app/models/OPNsense/IPsecWatchdog/Menu/Menu.xml
 opnsense/mvc/app/models/OPNsense/IPsecWatchdog/ACL/ACL.xml
 opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/IndexController.php
