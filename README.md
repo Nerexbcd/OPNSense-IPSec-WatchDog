@@ -220,10 +220,6 @@ pkgsite/              # gh-pages install guide template + generator
 .github/workflows/    # CI: auto-publish to gh-pages on every GitHub Release
 ```
 
-Publishing new versions of the plugin, and the trade-offs of never getting
-into OPNsense's official plugin list, are covered in [Maintainer
-notes](docs/maintainer-notes.md) — not needed just to use the plugin.
-
 ## License
 
 BSD 2-Clause, see [LICENSE](LICENSE). See [CHANGELOG.md](CHANGELOG.md) for
