@@ -183,8 +183,11 @@ about OPNsense specifically, not just "a bug was fixed":
 Adds a global + per-tunnel-override webhook URL, an "attempts before
 notifying" threshold, and an optional HMAC signing secret (see README's
 [Notifications](../README.md#notifications-optional) section for the
-user-facing description). Two design points worth knowing if you touch this
-code:
+user-facing description). A tunnel can override the URL and the attempts
+threshold independently of each other - added as two separate optional
+fields rather than one "use custom settings" toggle, since a follow-up ask
+was specifically "can a tunnel override just the attempts count too, not
+only the URL". Two design points worth knowing if you touch this code:
 
 - **State lives in `/tmp/ipsec_watchdog_<key>_state.json`** (JSON:
   `down_since`/`attempts`/`notified`), not in `config.xml` — it's
