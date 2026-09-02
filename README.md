@@ -208,7 +208,8 @@ belonging to a still-installed plugin).
 By default the watchdog just keeps quietly retrying — nothing tells you a
 tunnel is having trouble unless you check the page yourself. If you'd rather
 be told, the **Notifications** box at the top of the IPsec Watchdog page
-sends an HTTP webhook on whichever of these events you enable:
+sends an HTTP **POST** request (a JSON body, not a GET/query-string ping) to
+your webhook URL on whichever of these events you enable:
 
 - **Notify when a tunnel goes down** — fires immediately, the first time a
   tunnel is detected down, before any reconnect attempt.
