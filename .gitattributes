@@ -1,4 +1,6 @@
-# Force LF everywhere, regardless of platform checkout settings - several of these files
-# (build.sh, watchdog.php) have Unix shebangs that break if checked out as CRLF on Windows
-# and then copied to the FreeBSD box as-is.
-* text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pkg binary
+*.txz binary
