@@ -2,6 +2,25 @@
 
     $( document ).ready(function() {
 
+        mapDataToFormUI({'frm_GeneralSettings': "/api/ipsecwatchdog/general/get"}).done(function(data){
+            formatTokenizersUI();
+            $('.selectpicker').selectpicker('refresh');
+        });
+
+        $("#saveGeneralAct").click(function(){
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            $("#generalSavedMsg").addClass("hidden");
+            saveFormToEndpoint("/api/ipsecwatchdog/general/set", "frm_GeneralSettings", function(){
+                $btn.prop('disabled', false);
+                $("#generalSavedMsg").removeClass("hidden").delay(2000).fadeOut(function(){
+                    $(this).addClass("hidden").css('display', '');
+                });
+            }, false, function(){
+                $btn.prop('disabled', false);
+            });
+        });
+
         $("#{{formGridTunnel['table_id']}}").UIBootgrid({
             search:'/api/ipsecwatchdog/tunnel/search/',
             get:'/api/ipsecwatchdog/tunnel/get/',
@@ -59,6 +78,14 @@
     });
 
 </script>
+
+<div class="content-box __mb" style="padding: 10px;">
+    <strong>{{ lang._('Notifications') }}</strong>
+    <div class="text-muted" style="margin-bottom: 10px;"><small>{{ lang._('Optional: get an HTTP webhook call when a tunnel is still down after several failed reconnect attempts. Any individual tunnel below can override the URL here with its own (see its edit dialog).') }}</small></div>
+    {{ partial("layout_partials/base_form",['fields':formGeneralSettings,'id':'frm_GeneralSettings'])}}
+    <button class="btn btn-primary" id="saveGeneralAct" type="button">{{ lang._('Save') }}</button>
+    <span id="generalSavedMsg" class="hidden text-success" style="margin-left: 10px;"><i class="fa fa-check"></i> {{ lang._('Saved') }}</span>
+</div>
 
 <div class="content-box __mb">
     {{ partial('layout_partials/base_bootgrid_table', formGridTunnel) }}

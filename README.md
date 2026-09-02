@@ -36,6 +36,10 @@ strongSwan) showing it's currently up — `ESTABLISHED` on the IKE side,
   of them, each with its own independent threshold.
 - **Still fully visible when you want it.** "Run watchdog now" and "Show
   tunnel status" give you an on-demand check without touching a shell.
+- **Tells someone when it can't fix it itself.** If a tunnel is still down
+  after several reconnect attempts, an optional webhook call can notify
+  wherever you want — see [Notifications
+  (optional)](#notifications-optional) below.
 
 ### How it actually works, briefly
 
@@ -198,6 +202,46 @@ schedule you may have customized) — if you're uninstalling for good, delete
 that cron entry yourself from System > Settings > Cron afterwards; once the
 package is gone, OPNsense will allow deleting it (it only protects jobs
 belonging to a still-installed plugin).
+
+## Notifications (optional)
+
+By default the watchdog just keeps quietly retrying — nothing tells you a
+tunnel is having trouble unless you check the page yourself. If you'd rather
+be told, the **Notifications** box at the top of the IPsec Watchdog page
+sends an HTTP webhook once a tunnel is still down after several reconnect
+attempts in a row.
+
+- **Webhook URL**: any HTTP(S) endpoint that accepts a POST — a Slack or
+  Discord incoming webhook, PagerDuty, n8n/Zapier, or your own receiver.
+  Leave blank to leave notifications off.
+- **Notify after this many failed attempts**: consecutive reconnect
+  *attempts*, not minutes (default 3) — so with the default 10-minute
+  threshold, that's one alert roughly 30 minutes into an outage. Resets
+  once the tunnel recovers, so a future outage can alert again.
+- **Webhook signing secret** (optional): if set, every request carries an
+  `X-Watchdog-Signature: sha256=<hmac>` header (HMAC-SHA256 of the raw
+  body) so whatever receives it can verify it really came from this plugin.
+
+Any individual tunnel can also set its own **Webhook URL override** (in its
+edit dialog) if you want that one tunnel alerting somewhere different from
+everything else — leave it blank to just use the URL above.
+
+It fires once per outage, not every minute forever, and only for "still
+stuck down" — there's no separate "recovered" notification, so a resolved
+outage is confirmed on the page itself (the live status table), not by a
+second webhook. Example payload:
+
+```json
+{
+  "event": "ipsec_watchdog_still_down",
+  "connection": "1925b723-1745-4d53-b2cd-9830050e5542",
+  "child": "854b6cb3-9ecb-4379-826a-738042d6852a",
+  "description": "On-Prem",
+  "attempts": 3,
+  "threshold_minutes": 10,
+  "timestamp": "2026-09-02T10:26:14+00:00"
+}
+```
 
 ---
 

@@ -1,5 +1,5 @@
 name: ipsec-watchdog
-version: "1.3"
+version: "1.4"
 origin: "net/ipsec-watchdog"
 comment: "IPsec tunnel watchdog with GUI"
 desc: "Monitors one or more configured IPsec (swanctl) connections and force-reconnects any that stay down beyond their configured threshold. Includes a VPN > IPsec Watchdog settings page with a live tunnel status table."

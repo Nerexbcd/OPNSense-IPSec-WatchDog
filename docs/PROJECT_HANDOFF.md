@@ -165,11 +165,11 @@ about OPNsense specifically, not just "a bug was fixed":
 
 ## Current status (as of this document)
 
-- Version: 1.3 (see CHANGELOG.md)
+- Version: 1.4 (see CHANGELOG.md)
 - Installed and manually exercised end-to-end on a real OPNsense 26.7 box:
   menu, grid CRUD, run-now, status view, auto-cron registration, both
   install methods (direct `.pkg` and the gh-pages `pkg` repo, FreeBSD 15
-  path).
+  path), and the 1.4 webhook feature (see below).
 - README rewritten for a general/first-time audience with a real screenshot
   of a working deployment; deep build/CI/publish internals moved to
   [maintainer-notes.md](maintainer-notes.md) to keep the top of the README
@@ -177,3 +177,51 @@ about OPNsense specifically, not just "a bug was fixed":
 - Outstanding before calling this "fully shipped": publish an actual GitHub
   Release to exercise the CI workflow for real (see maintainer-notes.md),
   and ideally get eyes on a real FreeBSD 14 box.
+
+### 1.4: webhook notifications — how it was verified
+
+Adds a global + per-tunnel-override webhook URL, an "attempts before
+notifying" threshold, and an optional HMAC signing secret (see README's
+[Notifications](../README.md#notifications-optional) section for the
+user-facing description). Two design points worth knowing if you touch this
+code:
+
+- **State lives in `/tmp/ipsec_watchdog_<key>_state.json`** (JSON:
+  `down_since`/`attempts`/`notified`), not in `config.xml` — it's
+  reconnect-attempt bookkeeping, not user config, and writing it to
+  `config.xml` every minute would spam config backups. `attempts` persists
+  across each reconnect try (only `down_since` resets per attempt, so the
+  next attempt still waits a full threshold) so it can count "3 tries" as
+  the feature requires; the whole file is dropped the moment the tunnel
+  comes back up, which both re-arms the next outage's alert and answers the
+  "no recovery notification" scope decision below.
+- The **general (non-array) settings node** needed its own controller
+  (`Api/GeneralController.php`) — `ApiMutableModelControllerBase`'s
+  `getBase()`/`setBase()` helpers are for a specific *array item* (calling
+  `getBase()` with no uuid actually returns a blank `Add()` template, which
+  fatals on a non-array node). The working pattern, confirmed by reading the
+  actual framework source on the test box and mirrored from OPNsense's own
+  `Wireguard/general.volt`, is: override `getAction()`/`setAction()`
+  directly against `$this->getModel()->general` using its generic
+  `getNodes()`/`setNodes()`, and scope validation with
+  `$this->validate($mdl->general, 'general')` so a tunnel-row validation
+  issue elsewhere in the model never bleeds onto this form.
+
+Verified end-to-end on the real box, not just read/reasoned about: `php -l`
+on every changed file; the exact validation-scoping logic traced through by
+hand with a throwaway PHP CLI script before touching the controller, to
+confirm the field-name output would actually match the form's `general.*`
+ids; a temporary API key generated and later deleted to drive the real
+`general/get`/`general/set` HTTP endpoints end-to-end (including an
+intentionally invalid value, to see the validation error surface with the
+right field name); and the attempt-counting state machine run 4 times in a
+row against a real `nc` listener, confirming attempts increment correctly,
+the webhook fires exactly once at the configured threshold, and further
+attempts don't re-fire it. The HMAC signature on the captured request was
+independently recomputed and matched. All test files, the temporary API
+key, and the test webhook config were cleaned up afterward — nothing from
+this testing was left on the box or committed to the repo.
+
+Scope decision: **no "recovered" notification**, only "still stuck down" —
+asked and decided explicitly rather than assumed; the live status table on
+the page already covers confirming recovery.

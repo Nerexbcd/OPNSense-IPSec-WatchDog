@@ -3,6 +3,22 @@
 All notable changes to this plugin are documented here. Versions match the
 `version:` field in `manifest/+MANIFEST`.
 
+## 1.4 — webhook notifications
+
+- **Webhook notification on stuck-down tunnels.** New "Notifications"
+  section on the settings page: a global webhook URL and a "notify after N
+  failed attempts" threshold (default 3). Any tunnel row can also set its
+  own webhook URL, overriding the global one just for that row. When a
+  tunnel is still down after that many consecutive reconnect attempts, the
+  watchdog POSTs a JSON payload (connection, child SA, description, attempt
+  count, threshold, timestamp) to the URL — point it at a Slack/Discord
+  incoming webhook, PagerDuty, your own receiver, or anything else that
+  accepts an HTTP POST. Fires once per outage (resets when the tunnel comes
+  back up), and an optional signing secret adds an
+  `X-Watchdog-Signature: sha256=...` header so a receiver can verify it.
+  No notification on recovery — this is a "something needs attention" alert,
+  not a status feed; the GUI's live status table still covers that.
+
 ## 1.3 — package renamed, `os-ipsec-watchdog` → `ipsec-watchdog` (breaking)
 
 - **Renamed the package** from `os-ipsec-watchdog` to `ipsec-watchdog`.

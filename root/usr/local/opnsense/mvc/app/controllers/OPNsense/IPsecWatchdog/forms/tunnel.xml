@@ -46,4 +46,11 @@
             <sequence>5</sequence>
         </grid_view>
     </field>
+    <field>
+        <id>tunnel.webhookUrl</id>
+        <label>Webhook URL override</label>
+        <type>text</type>
+        <help>Optional. Only alerts for this tunnel; leave blank to use the global webhook URL (General settings above), if any.</help>
+        <advanced>true</advanced>
+    </field>
 </form>

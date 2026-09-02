@@ -5,7 +5,9 @@ opnsense/mvc/app/models/OPNsense/IPsecWatchdog/ACL/ACL.xml
 opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/IndexController.php
 opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/Api/TunnelController.php
 opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/Api/ServiceController.php
+opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/Api/GeneralController.php
 opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/forms/tunnel.xml
+opnsense/mvc/app/controllers/OPNsense/IPsecWatchdog/forms/general.xml
 opnsense/mvc/app/views/OPNsense/IPsecWatchdog/index.volt
 opnsense/scripts/OPNsense/IPsecWatchdog/watchdog.php
 opnsense/scripts/OPNsense/IPsecWatchdog/manage_cron.php

@@ -1,0 +1,20 @@
+<form>
+    <field>
+        <id>general.webhookUrl</id>
+        <label>Webhook URL</label>
+        <type>text</type>
+        <help>Called when a tunnel is still down after the number of consecutive reconnect attempts set below. Any HTTP(S) endpoint works - point it at a Slack/Discord incoming webhook, PagerDuty, your own receiver, etc. Leave blank to disable notifications for any tunnel that doesn't set its own webhook URL below.</help>
+    </field>
+    <field>
+        <id>general.webhookAttempts</id>
+        <label>Notify after this many failed attempts</label>
+        <type>text</type>
+        <help>Consecutive reconnect attempts (not minutes) a tunnel must fail before the webhook fires. Resets once the tunnel comes back up, so it can fire again on a future outage.</help>
+    </field>
+    <field>
+        <id>general.webhookSecret</id>
+        <label>Webhook signing secret (optional)</label>
+        <type>password</type>
+        <help>If set, every webhook request includes an X-Watchdog-Signature header (hex-encoded HMAC-SHA256 of the request body, using this secret) so a receiver can verify it actually came from this plugin.</help>
+    </field>
+</form>
