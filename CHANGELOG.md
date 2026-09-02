@@ -22,6 +22,18 @@ All notable changes to this plugin are documented here. Versions match the
   > Connections) rather than just raw connection/child UUIDs. See
   [docs/notifications.md](docs/notifications.md) for the full payload
   reference and a worked example timeline.
+- **Fixed: overlapping watchdog runs could pile up and stall the "Run
+  watchdog now" button.** A single reconnect attempt against an unreachable
+  peer can take up to ~45 seconds (strongSwan retries 5 times before giving
+  up); with an aggressive threshold (e.g. 1 minute) and a tunnel that's
+  genuinely down, the once-a-minute cron could start a new run before the
+  previous one finished, piling up concurrent runs faster than they
+  completed - eventually saturating `configd` badly enough that even an
+  unrelated manual "Run watchdog now" click would time out. `watchdog.php`
+  now refuses to start a second, overlapping pass (a `flock()` that releases
+  itself automatically on exit, however the process exits) - an overlapping
+  run now exits immediately with a clear "a previous run is still in
+  progress" log line instead of piling up.
 
 ## 1.3 — package renamed, `os-ipsec-watchdog` → `ipsec-watchdog` (breaking)
 

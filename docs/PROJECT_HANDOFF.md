@@ -166,6 +166,30 @@ about OPNsense specifically, not just "a bug was fixed":
     and any settings temporarily changed for testing (two notification
     toggles) were restored to the user's actual saved values before moving
     on - see the 1.4 sections below for what was actually verified this way.
+12. **No guard against overlapping runs let a real outage snowball into a
+    "Run watchdog now" outage of its own.** Reported as "the Run watchdog
+    now button stopped working." Root cause: that same real tunnel from
+    entry 11, still genuinely down, had its threshold set to 1 minute. A
+    `swanctl --initiate` against an unreachable peer can take up to ~45s
+    (strongSwan retries 5 times before giving up) - so with the cron firing
+    every 60s and every single cycle qualifying for a retry (threshold so
+    low it's basically always past due), new `watchdog.php` processes kept
+    starting before the previous one finished. Confirmed via `ps aux`: 6+
+    concurrent `watchdog.php`/`swanctl` processes piled up, and `configctl
+    ipsecwatchdog watchdog` (the exact call the button makes server-side)
+    genuinely timed out past 120s with "error in configd communication."
+    This wasn't caused by any of this session's changes - it's a gap that's
+    existed since v1.0 - it just took a 1-minute threshold plus a
+    persistently unreachable peer to surface it. Fixed with a `flock()`
+    guard at the top of `watchdog.php`: a second overlapping invocation now
+    exits immediately with a clear log line instead of piling up. Verified
+    by launching two runs back-to-back (the second correctly skipped) and
+    timing `configctl ipsecwatchdog watchdog` before/after (120s+ timeout
+    → consistently ~0.2s). Side effect worth knowing: with this specific
+    combination (very low threshold + a peer that's still down), the button
+    will now often and correctly report "a previous run is still in
+    progress" rather than hang - that's the fix working, not a new bug; a
+    less aggressive threshold gives the lock more idle time to click into.
 
 ## Explicit scope decisions (respect these if continuing this project)
 

@@ -27,6 +27,20 @@ function ipsec_watchdog_log($msg)
     echo $msg . "\n";
 }
 
+// Refuse to run a second, overlapping pass. A single "swanctl --initiate" against an
+// unreachable peer can take up to ~45s (5 retransmits before strongSwan gives up) - with an
+// aggressive threshold (e.g. 1 minute) and a genuinely down tunnel, the once-a-minute cron can
+// start a new run before the previous one has finished, piling up concurrent runs faster than
+// they complete. That pileup can saturate configd enough that even an unrelated manual "Run
+// watchdog now" click times out waiting for a free worker - not a hang in this script, but a
+// real, previously-missing guard against it. flock() releases itself automatically the moment
+// this process exits (however it exits), so there's no stale-lock cleanup to worry about.
+$ipsec_watchdog_lock = fopen('/tmp/ipsec_watchdog.lock', 'c');
+if ($ipsec_watchdog_lock === false || !flock($ipsec_watchdog_lock, LOCK_EX | LOCK_NB)) {
+    ipsec_watchdog_log('ipsec-watchdog: a previous run is still in progress, skipping this cycle');
+    exit(0);
+}
+
 /**
  * Load a tunnel's JSON state (down_since/attempts/notified), or a fresh default if there is none
  * yet (or it's unreadable/corrupt - never let a bad state file wedge the watchdog).
