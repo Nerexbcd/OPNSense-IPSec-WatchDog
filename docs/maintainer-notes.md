@@ -4,6 +4,10 @@ Notes for whoever is publishing new versions of this plugin or considering
 its future — not needed to install or use it. See the main
 [README](../README.md) for that.
 
+For the full history of how this plugin came together — every bug found
+along the way and what it taught, plus what's verified vs. still unproven —
+see [PROJECT_HANDOFF.md](PROJECT_HANDOFF.md).
+
 ## Publishing a new version
 
 **Automated:** bump `version:` in `manifest/+MANIFEST`, commit, then:
