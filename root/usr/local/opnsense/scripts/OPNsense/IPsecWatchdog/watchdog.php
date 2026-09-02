@@ -15,6 +15,7 @@ require_once 'config.inc';
 require_once 'util.inc';
 
 use OPNsense\Core\Config;
+use OPNsense\IPsec\Swanctl;
 use OPNsense\IPsecWatchdog\IPsecWatchdog;
 use OPNsense\IPsecWatchdog\Webhook;
 
@@ -49,6 +50,66 @@ function ipsec_watchdog_save_state($state_file, $state)
 }
 
 /**
+ * Build [uuid => friendly label] maps from OPNsense's own IPsec (Swanctl) model, so webhook
+ * payloads can carry the same human-readable names the GUI's dropdowns/status table already
+ * show instead of raw UUIDs. Children fall back to their traffic selectors when undescribed,
+ * matching the tunnel model's own display_format (see IPsecWatchdog.xml). Degrades to empty
+ * maps (raw uuids used as-is) if the Swanctl model can't be loaded, same as
+ * Api\ServiceController::getDescriptionLabels(), which this mirrors.
+ * @return array{0: array<string,string>, 1: array<string,string>} [connection uuid => label, child uuid => label]
+ */
+function ipsec_watchdog_load_labels()
+{
+    $connLabels = [];
+    $childLabels = [];
+    try {
+        $swanctl = new Swanctl();
+        foreach ($swanctl->Connections->Connection->iterateItems() as $conn) {
+            $uuid = $conn->getAttribute('uuid');
+            $descr = trim((string)$conn->description);
+            if (!empty($uuid) && $descr !== '') {
+                $connLabels[$uuid] = $descr;
+            }
+        }
+        foreach ($swanctl->children->child->iterateItems() as $child) {
+            $uuid = $child->getAttribute('uuid');
+            if (empty($uuid)) {
+                continue;
+            }
+            $descr = trim((string)$child->description);
+            if ($descr !== '') {
+                $childLabels[$uuid] = $descr;
+                continue;
+            }
+            $localTs = trim((string)$child->local_ts);
+            $remoteTs = trim((string)$child->remote_ts);
+            if ($localTs !== '' || $remoteTs !== '') {
+                $childLabels[$uuid] = "{$localTs} -> {$remoteTs}";
+            }
+        }
+    } catch (\Throwable $e) {
+        // fall through with whatever was collected so far; raw uuids remain usable as-is
+    }
+    return [$connLabels, $childLabels];
+}
+
+/**
+ * Best single human-readable name for a tunnel, in priority order: the row's own optional
+ * label, then the connection's (plus child's, if it adds information) friendly description,
+ * then finally the raw connection/child identifiers if nothing friendlier is known.
+ */
+function ipsec_watchdog_friendly_name($descr, $connLabel, $childLabel, $conn, $child)
+{
+    if ($descr !== '') {
+        return $descr;
+    }
+    if ($connLabel !== $conn) {
+        return $childLabel !== $child ? "{$connLabel} ({$childLabel})" : $connLabel;
+    }
+    return "{$conn}/{$child}";
+}
+
+/**
  * Thin wrapper around Webhook::send() (shared with the "Test webhook" button) that also logs
  * the outcome - never lets a slow/unreachable endpoint hold up checking the rest of the tunnels.
  */
@@ -73,7 +134,7 @@ function ipsec_watchdog_check_tunnel(
     $conn,
     $child,
     $threshold,
-    $descr,
+    $tunnelName,
     $webhookUrl,
     $webhookAttempts,
     $webhookSecret,
@@ -110,9 +171,9 @@ function ipsec_watchdog_check_tunnel(
             if ($notifyOnUp && !empty($webhookUrl)) {
                 ipsec_watchdog_notify($webhookUrl, $webhookSecret, [
                     'event' => 'ipsec_watchdog_up',
+                    'tunnel_name' => $tunnelName,
                     'connection' => $conn,
                     'child' => $child,
-                    'description' => $descr,
                     'attempts' => $state['attempts'],
                     'timestamp' => gmdate('c'),
                 ], "Tunnel $conn/$child recovery");
@@ -132,9 +193,9 @@ function ipsec_watchdog_check_tunnel(
         if ($notifyOnDown && !empty($webhookUrl)) {
             ipsec_watchdog_notify($webhookUrl, $webhookSecret, [
                 'event' => 'ipsec_watchdog_down',
+                'tunnel_name' => $tunnelName,
                 'connection' => $conn,
                 'child' => $child,
-                'description' => $descr,
                 'timestamp' => gmdate('c'),
             ], "Tunnel $conn/$child down-detected");
         }
@@ -163,9 +224,9 @@ function ipsec_watchdog_check_tunnel(
         if ($notifyOnStuck && !$state['notified'] && !empty($webhookUrl) && $state['attempts'] >= $webhookAttempts) {
             ipsec_watchdog_notify($webhookUrl, $webhookSecret, [
                 'event' => 'ipsec_watchdog_still_down',
+                'tunnel_name' => $tunnelName,
                 'connection' => $conn,
                 'child' => $child,
-                'description' => $descr,
                 'attempts' => $state['attempts'],
                 'threshold_minutes' => $threshold,
                 'timestamp' => gmdate('c'),
@@ -188,6 +249,9 @@ if ($webhookAttempts < 1) {
 $notifyOnDown = (string)$mdl->general->notifyOnDown === '1';
 $notifyOnStuck = (string)$mdl->general->notifyOnStuck === '1';
 $notifyOnUp = (string)$mdl->general->notifyOnUp === '1';
+
+// loaded once up front (not per tunnel) - one Swanctl model load covers every row below
+[$connLabels, $childLabels] = ipsec_watchdog_load_labels();
 
 $checked = 0;
 foreach ($mdl->tunnel->iterateItems() as $tunnel) {
@@ -217,11 +281,18 @@ foreach ($mdl->tunnel->iterateItems() as $tunnel) {
     if ($webhookAttemptsForTunnel < 1) {
         $webhookAttemptsForTunnel = $webhookAttempts;
     }
+    $tunnelName = ipsec_watchdog_friendly_name(
+        trim((string)$tunnel->descr),
+        $connLabels[$conn] ?? $conn,
+        $childLabels[$child] ?? $child,
+        $conn,
+        $child
+    );
     ipsec_watchdog_check_tunnel(
         $conn,
         $child,
         $threshold,
-        trim((string)$tunnel->descr),
+        $tunnelName,
         $webhookUrl,
         $webhookAttemptsForTunnel,
         $webhookSecret,

@@ -16,7 +16,12 @@ All notable changes to this plugin are documented here. Versions match the
   whatever URL is currently typed in, even before Save is clicked. Every
   event fires once per outage/recovery, not every minute. An optional
   signing secret adds an `X-Watchdog-Signature: sha256=...` header so a
-  receiver can verify a request really came from this plugin.
+  receiver can verify a request really came from this plugin. Every payload
+  includes a `tunnel_name` - a human-readable name (the row's own label if
+  set, otherwise the connection's/child's own description from VPN > IPsec
+  > Connections) rather than just raw connection/child UUIDs. See
+  [docs/notifications.md](docs/notifications.md) for the full payload
+  reference and a worked example timeline.
 
 ## 1.3 — package renamed, `os-ipsec-watchdog` → `ipsec-watchdog` (breaking)
 

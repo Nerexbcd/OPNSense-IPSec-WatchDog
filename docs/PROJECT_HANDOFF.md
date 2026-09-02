@@ -302,3 +302,33 @@ exercised structurally (no fatal, reached the intended branch) but its
 notify-on-recovery behavior specifically was not empirically confirmed
 end-to-end the way the other two events were, since the real tunnel could
 not be made to go "up" on demand for the test.
+
+### 1.4 follow-up: friendly tunnel name in every payload
+
+Every payload now carries `tunnel_name` instead of the old bare
+`description` field (the tunnel row's own optional label, often blank).
+Resolution order, in `ipsec_watchdog_friendly_name()`: the row's own label
+if set, else the connection's (and child's, if it adds information) own
+description pulled from the `OPNsense\IPsec\Swanctl` model, else the raw
+`connection`/`child` identifiers as a last resort - mirroring
+`Api\ServiceController::getDescriptionLabels()`'s approach for the GUI
+status table (including the same fallback to a child's traffic selectors
+when it has no description of its own), but re-implemented locally in
+watchdog.php rather than shared, since the two versions diverge slightly
+(the controller's is `private` and lacks the traffic-selector fallback).
+The label lookup itself (`ipsec_watchdog_load_labels()`) runs once before
+the tunnel loop, not once per tunnel - one `Swanctl` model load already
+covers every row.
+
+Also added: [docs/notifications.md](notifications.md), a user-facing "mini
+explanation" of the event system (the timeline table, per-event payload
+reference, override precedence, signature verification) - written because
+the README's own Notifications section was getting long carrying all of
+that inline; it now stays as a shorter overview with a link out.
+
+Verified read-only against the real box's actual Swanctl data (own test
+script calling just the label-loading/name-resolution functions, not
+`check_tunnel` itself - see the earlier lesson about that): confirmed the
+real connection's description and the real child's traffic-selector
+fallback both resolve correctly, and that a blank per-row label correctly
+falls through to them.

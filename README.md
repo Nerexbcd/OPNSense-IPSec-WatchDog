@@ -245,26 +245,15 @@ for 3, whether or not it also uses a different URL. Leave either blank to
 just use the global value above for that one. The three event checkboxes
 above are global only (they apply to every tunnel the same way).
 
-Every event fires once per outage, not every minute for as long as it lasts.
-Example "still down" payload:
+Every event fires once per outage, not every minute for as long as it lasts,
+and every payload includes a `tunnel_name` — a human-readable name (your own
+label for the row if you set one, otherwise the connection's/child's own
+description from VPN > IPsec > Connections) rather than just the raw
+connection/child IDs.
 
-```json
-{
-  "event": "ipsec_watchdog_still_down",
-  "connection": "1925b723-1745-4d53-b2cd-9830050e5542",
-  "child": "854b6cb3-9ecb-4379-826a-738042d6852a",
-  "description": "On-Prem",
-  "attempts": 3,
-  "threshold_minutes": 10,
-  "timestamp": "2026-09-02T10:26:14+00:00"
-}
-```
-
-The "down" and "up" events use the same shape (`event` becomes
-`ipsec_watchdog_down`/`ipsec_watchdog_up`; the down event has no
-`attempts`/`threshold_minutes` yet, the up event carries how many attempts
-were made before it recovered). The test button sends
-`{"event": "ipsec_watchdog_test", "message": "...", "timestamp": "..."}`.
+For the exact payload fields for each event, a worked example timeline, and
+how the pieces above (thresholds, per-tunnel overrides, the event toggles)
+actually interact, see **[docs/notifications.md](docs/notifications.md)**.
 
 ---
 
