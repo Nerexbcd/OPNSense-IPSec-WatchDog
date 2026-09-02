@@ -25,15 +25,17 @@
             const $btn = $(this);
             const $result = $("#testWebhookResult").addClass("hidden");
             // read straight out of the form fields, so this can be tried before Save is clicked
-            const url = $("#general\\.webhookUrl").val();
-            const secret = $("#general\\.webhookSecret").val();
-            if (!url) {
+            // (named webhookUrl/webhookSecret, not url/secret, so they don't collide with
+            // ajaxCall's own url=/sendData=/callback= assignment idiom used just below)
+            const webhookUrl = $("#general\\.webhookUrl").val();
+            const webhookSecret = $("#general\\.webhookSecret").val();
+            if (!webhookUrl) {
                 $result.removeClass("hidden text-success").addClass("text-danger")
                     .text("{{ lang._('Enter a webhook URL above first.') }}");
                 return;
             }
             $btn.prop('disabled', true);
-            ajaxCall(url="/api/ipsecwatchdog/service/testwebhook", sendData={'url': url, 'secret': secret}, callback=function(data, status){
+            ajaxCall(url="/api/ipsecwatchdog/service/testwebhook", sendData={'url': webhookUrl, 'secret': webhookSecret}, callback=function(data, status){
                 $btn.prop('disabled', false);
                 if (data && data.result === 'ok') {
                     $result.removeClass("hidden text-danger").addClass("text-success")
