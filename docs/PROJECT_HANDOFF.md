@@ -211,7 +211,12 @@ about OPNsense specifically, not just "a bug was fixed":
 
 ## Current status (as of this document)
 
-- Version: 1.4 (see CHANGELOG.md)
+- Version: 1.4 (see CHANGELOG.md) - **tagged and pushed** (`git tag v1.4` at
+  commit `e2b8031`, `git push origin v1.4`), so the tag exists on GitHub and
+  is ready to attach to a Release. Release notes for it have been drafted
+  (in conversation, not as a repo file - their content matches CHANGELOG.md's
+  1.4 entry, just reformatted for a GitHub Release body) and handed to the
+  user to paste in.
 - Installed and manually exercised end-to-end on a real OPNsense 26.7 box:
   menu, grid CRUD, run-now, status view, auto-cron registration, both
   install methods (direct `.pkg` and the gh-pages `pkg` repo, FreeBSD 15
@@ -220,9 +225,14 @@ about OPNsense specifically, not just "a bug was fixed":
   of a working deployment; deep build/CI/publish internals moved to
   [maintainer-notes.md](maintainer-notes.md) to keep the top of the README
   approachable.
-- Outstanding before calling this "fully shipped": publish an actual GitHub
-  Release to exercise the CI workflow for real (see maintainer-notes.md),
-  and ideally get eyes on a real FreeBSD 14 box.
+- Outstanding before calling this "fully shipped": the tag exists, but no
+  GitHub Release has actually been **published** from it yet - that's a
+  manual step only the repo owner can do (Releases > Draft a new release >
+  pick tag v1.4 > Publish release), and it's what actually triggers
+  `.github/workflows/publish-pkg-repo.yml` (see maintainer-notes.md) for
+  its first real run ever. Until that happens, the gh-pages `pkg` repo still
+  serves 1.3 - only this box (installed via direct `.pkg`, not the repo) has
+  1.4. Also still outstanding: eyes on a real FreeBSD 14 box.
 
 ### 1.4: webhook notifications — how it was verified
 
